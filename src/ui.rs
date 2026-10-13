@@ -22,19 +22,38 @@ fn stop(active: &Rc<RefCell<Option<Running>>>) {
     }
 }
 
-fn populate(model: &gtk::StringList, dropdown: &gtk::DropDown, status: &gtk::Label) {
+fn populate(
+    model: &gtk::StringList,
+    dropdown: &gtk::DropDown,
+    status: &gtk::Label,
+    show_all: bool,
+    preferred: Option<&str>,
+) {
     model.splice(0, model.n_items(), &[]);
-    match device::list_video_nodes(Path::new("/dev")) {
-        Ok(nodes) if nodes.is_empty() => {
-            status.set_text("No video nodes. Insert the KVM module and refresh.")
-        }
+    let dev = Path::new("/dev");
+    let nodes = if show_all {
+        device::list_video_nodes(dev)
+    } else {
+        device::list_kvm_nodes(dev, Path::new("/sys/class/video4linux"))
+    };
+    match nodes {
+        Ok(nodes) if nodes.is_empty() => status.set_text(if show_all {
+            "No video nodes. Insert the KVM module and refresh."
+        } else {
+            "No KVM capture device (USB 3188:1000) found. Try Show all video devices."
+        }),
         Ok(nodes) => {
-            for node in nodes {
+            let selected = device::preferred_index(&nodes, preferred);
+            for node in &nodes {
                 let value = node.to_string_lossy();
                 model.append(&value);
             }
-            dropdown.set_selected(gtk::INVALID_LIST_POSITION);
-            status.set_text("Select the KVM capture node, then tap Start.");
+            dropdown.set_selected(selected.unwrap_or(gtk::INVALID_LIST_POSITION));
+            status.set_text(if selected.is_some() {
+                "KVM capture device selected. Tap Start / Stop."
+            } else {
+                "Select a capture device, then tap Start / Stop."
+            });
         }
         Err(err) => status.set_text(&format!("Cannot list /dev: {err}")),
     }
@@ -51,6 +70,8 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     let controls = gtk::Box::new(gtk::Orientation::Horizontal, 8);
     let model = gtk::StringList::new(&[]);
     let dropdown = gtk::DropDown::builder().model(&model).build();
+    let show_all = gtk::CheckButton::with_label("Show all video devices");
+    show_all.set_active(initial_device.is_some());
     let refresh = gtk::Button::with_label("Refresh devices");
     let start = gtk::Button::with_label("Start / Stop");
     let fullscreen = gtk::Button::with_label("Full screen");
@@ -62,17 +83,51 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     let active: Rc<RefCell<Option<Running>>> = Rc::new(RefCell::new(None));
     controls.append(&dropdown);
     controls.append(&refresh);
+    controls.append(&show_all);
     controls.append(&start);
     controls.append(&fullscreen);
     root.append(&controls);
     root.append(&picture);
     root.append(&status);
     window.set_child(Some(&root));
-    populate(&model, &dropdown, &status);
+    populate(
+        &model,
+        &dropdown,
+        &status,
+        show_all.is_active(),
+        initial_device,
+    );
 
     {
+        let (model, dropdown, status, show_all) = (
+            model.clone(),
+            dropdown.clone(),
+            status.clone(),
+            show_all.clone(),
+        );
+        refresh.connect_clicked(move |_| {
+            let preferred = model.string(dropdown.selected());
+            populate(
+                &model,
+                &dropdown,
+                &status,
+                show_all.is_active(),
+                preferred.as_deref(),
+            );
+        });
+    }
+    {
         let (model, dropdown, status) = (model.clone(), dropdown.clone(), status.clone());
-        refresh.connect_clicked(move |_| populate(&model, &dropdown, &status));
+        show_all.connect_toggled(move |button| {
+            let preferred = model.string(dropdown.selected());
+            populate(
+                &model,
+                &dropdown,
+                &status,
+                button.is_active(),
+                preferred.as_deref(),
+            );
+        });
     }
     {
         let (window, fullscreen_button) = (window.clone(), fullscreen.clone());
