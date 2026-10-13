@@ -188,6 +188,8 @@ fn start_capture(
     let pipeline = element
         .dynamic_cast::<gst::Pipeline>()
         .map_err(|_| "Capture pipeline type error.".to_owned())?;
+    #[cfg(feature = "benchmark")]
+    crate::telemetry::install(&pipeline);
     let sink = pipeline
         .by_name("display")
         .ok_or_else(|| "GTK4 video sink unavailable.".to_owned())?;
@@ -349,6 +351,9 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     overlay.add_css_class("kvm-view");
     INSTALL_STYLE.call_once(|| {
         let css = gtk::CssProvider::new();
+        #[cfg(feature = "native-yuv")]
+        css.load_from_string(".kvm-view { background-color: #000; }");
+        #[cfg(not(feature = "native-yuv"))]
         css.load_from_data(".kvm-view { background-color: #000; }");
         gtk::style_context_add_provider_for_display(
             &gtk::prelude::WidgetExt::display(&window),

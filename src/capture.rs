@@ -20,6 +20,25 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore = "requires a GTK display; run with native-yuv"]
+    fn sink_accepts_native_yuy2() {
+        use gstreamer::{self as gst, prelude::*};
+        use std::str::FromStr;
+        gst::init().unwrap();
+        gtk4::init().unwrap();
+        gstgtk4::plugin_register_static().unwrap();
+        let sink = gst::ElementFactory::make("gtk4paintablesink")
+            .build()
+            .unwrap();
+        let _paintable = sink.property::<gtk4::gdk::Paintable>("paintable");
+        let offered = sink.static_pad("sink").unwrap().query_caps(None);
+        let wanted =
+            gst::Caps::from_str("video/x-raw,format=YUY2,width=1920,height=1080,framerate=60/1")
+                .unwrap();
+        assert!(offered.can_intersect(&wanted), "offered caps: {offered}");
+    }
+
+    #[test]
     fn pipeline_uses_low_latency_video_path() {
         assert_eq!(
             pipeline_description("/dev/video2"),

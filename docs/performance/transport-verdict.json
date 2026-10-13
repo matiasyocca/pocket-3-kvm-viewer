@@ -1,0 +1,8 @@
+{
+  "status": "inconclusive",
+  "dataset": "transport.jsonl",
+  "reason": "The third auto run stalled; later variants encountered UVC TRY_FMT EIO and USB control timeouts. Failed/no-frame runs cannot be compared as resource-saving measurements.",
+  "excluded_from_efficiency_comparisons": ["io-mmap", "io-dmabuf", "io-rw", "io-userptr", "io-dmabuf-import"],
+  "recovery": "User reported capture working again in the latest viewer; no process owned /dev/video2 at the subsequent check.",
+  "action": "Retry only after confirming frames; avoid rapid reopen loops. No IO-mode production change accepted."
+}

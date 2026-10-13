@@ -1,6 +1,8 @@
 mod capture;
 mod device;
 mod inhibit;
+#[cfg(feature = "benchmark")]
+mod telemetry;
 mod ui;
 
 use gstreamer as gst;

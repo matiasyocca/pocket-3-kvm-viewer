@@ -12,6 +12,7 @@
           version = "0.1.0";
           src = self;
           cargoLock.lockFile = ./Cargo.lock;
+          buildFeatures = [ "native-yuv" ];
 
           nativeBuildInputs = with pkgs; [ pkg-config wrapGAppsHook4 ];
           buildInputs = with pkgs; [

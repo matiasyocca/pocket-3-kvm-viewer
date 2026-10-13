@@ -1,0 +1,24 @@
+{
+  "baseline-confirm": {
+    "after_initial_acquisition": {
+      "median_sink_fps": 59.998,
+      "min_sink_fps": 59.665,
+      "max_sink_fps": 60.332,
+      "samples": 48
+    },
+    "first_caps_record": "BENCH_FRAME frames=157 fps=52.332 caps=video/x-raw, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, format=(string)RGB, colorimetry=(string)1:1:5:1 state=Playing",
+    "capture_errors": [],
+    "scope": "Buffers delivered to sink, not physical presentation FPS"
+  },
+  "native-yuv-confirm": {
+    "after_initial_acquisition": {
+      "median_sink_fps": 59.996,
+      "min_sink_fps": 59.966,
+      "max_sink_fps": 60.316,
+      "samples": 48
+    },
+    "first_caps_record": "BENCH_FRAME frames=157 fps=52.321 caps=video/x-raw, format=(string)YUY2, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, colorimetry=(string)2:4:5:1 state=Playing",
+    "capture_errors": [],
+    "scope": "Buffers delivered to sink, not physical presentation FPS"
+  }
+}

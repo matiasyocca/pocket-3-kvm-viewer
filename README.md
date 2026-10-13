@@ -4,7 +4,7 @@ A Linux-first Rust/GTK4 application for the optional GPD Pocket 3 KVM module's H
 
 ## Build
 
-Rust 1.92 or newer (required by `gst-plugin-gtk4` 0.15), Cargo, `pkg-config`, GTK4 headers, GStreamer core/base development headers, and GStreamer base/good runtime plugins are required. Build on either x86_64 or aarch64 Linux. The GTK4 paintable sink is compiled and registered from the Rust dependency; it is not necessary to install a separate system GTK4 GStreamer plugin.
+Rust 1.92 or newer (required by `gst-plugin-gtk4` 0.15), Cargo, `pkg-config`, GTK4 4.10+ headers, GStreamer core/base development headers, and GStreamer base/good runtime plugins are required. Build on either x86_64 or aarch64 Linux. The GTK4 paintable sink is compiled and registered from the Rust dependency; it is not necessary to install a separate system GTK4 GStreamer plugin.
 
 On a conventional distribution, install the system dependencies first. Example package names (check your distribution's actual versions):
 
@@ -30,6 +30,12 @@ cargo run --release
 ```
 
 Alternatively run one command without entering a shell: `nix develop -c cargo run --release`. The Nix shell supplies the same native libraries that a regular distribution installs as packages. The Rust binary has runtime GTK4/GStreamer shared-library dependencies; it is not a universal static binary. Builds on macOS/Windows are not supported: the capture source here is Linux V4L2.
+
+## Native YUV rendering
+
+On GTK 4.20 or newer, use `cargo run --release --features native-yuv`. This enables the sink's native YUV texture support, allowing compatible capture frames to bypass CPU RGB conversion without reducing resolution or frame rate. Ordinary Cargo builds retain the older-GTK software-conversion compatibility path. The Nix package explicitly enables `native-yuv` using its pinned GTK version. With a display available, verify capability using `cargo test --locked --features native-yuv capture::tests::sink_accepts_native_yuy2 -- --ignored --exact`.
+
+The optional `benchmark` feature adds frame-delivery/caps diagnostics to stderr; it is not enabled in normal builds or the Nix package. Reproducible CPU/RSS comparisons use `scripts/benchmark.py`; measurements and limitations are in `docs/PERFORMANCE.md`. Sink-delivery FPS is not the same as measured panel presentation rate or total power consumption.
 
 ## Nix package and NixOS
 
