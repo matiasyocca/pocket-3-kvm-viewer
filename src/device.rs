@@ -57,7 +57,7 @@ pub fn list_kvm_nodes(dev_dir: &Path, sys_video_dir: &Path) -> io::Result<Vec<Pa
 
 pub fn choose_kvm_node(nodes: &[PathBuf]) -> Result<PathBuf, &'static str> {
     match nodes {
-        [] => Err("No KVM capture device found. Attach the module and tap Start."),
+        [] => Err("No KVM capture device found. Waiting for the module..."),
         [node] => Ok(node.clone()),
         _ => Err("Multiple KVM capture devices found. Use --device /dev/videoN."),
     }
@@ -74,7 +74,7 @@ pub fn resolve_capture_node(
             .into_iter()
             .find(|node| node == Path::new(path))
             .ok_or_else(|| {
-                format!("Video node {path} is not present. Tap Start after attaching it.")
+                format!("Video node {path} is not present. Waiting for it to be attached.")
             });
     }
     let nodes = list_kvm_nodes(dev_dir, sys_video_dir)
@@ -153,7 +153,10 @@ mod tests {
         let one = vec![PathBuf::from("/dev/video2")];
         let many = vec![PathBuf::from("/dev/video2"), PathBuf::from("/dev/video4")];
         assert_eq!(choose_kvm_node(&one), Ok(PathBuf::from("/dev/video2")));
-        assert!(choose_kvm_node(&[]).unwrap_err().contains("No KVM"));
+        assert_eq!(
+            choose_kvm_node(&[]),
+            Err("No KVM capture device found. Waiting for the module...")
+        );
         assert!(choose_kvm_node(&many).unwrap_err().contains("Multiple"));
     }
 
@@ -192,7 +195,9 @@ mod tests {
             resolve_capture_node(&dev, &sys, dev.join("video2").to_str()).unwrap(),
             dev.join("video2")
         );
-        assert!(resolve_capture_node(&dev, &sys, Some("/dev/video9")).is_err());
+        assert!(resolve_capture_node(&dev, &sys, Some("/dev/video9"))
+            .unwrap_err()
+            .contains("Waiting for"));
         fs::remove_dir_all(root).unwrap();
     }
 

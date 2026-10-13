@@ -1,20 +1,53 @@
-use std::{cell::RefCell, path::Path, rc::Rc, sync::Once, time::Duration};
+use std::{
+    cell::{Cell, RefCell},
+    path::{Path, PathBuf},
+    rc::Rc,
+    sync::Once,
+    time::Duration,
+};
 
 use gst::prelude::*;
 use gstreamer as gst;
-use gtk::glib;
 use gtk::prelude::*;
+use gtk::{gio, glib};
 use gtk4 as gtk;
 
 use crate::{capture, device};
 
 struct Running {
+    path: PathBuf,
     pipeline: gst::Pipeline,
     watch: gst::bus::BusWatchGuard,
 }
 
 type ActiveCapture = Rc<RefCell<Option<Running>>>;
 static INSTALL_STYLE: Once = Once::new();
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CapturePreference {
+    Automatic,
+    Paused,
+}
+
+fn should_autostart(preference: CapturePreference, active: bool) -> bool {
+    preference == CapturePreference::Automatic && !active
+}
+
+fn is_video_node(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|name| name.to_str())
+        .and_then(|name| name.strip_prefix("video"))
+        .is_some_and(|suffix| {
+            !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit())
+        })
+}
+
+fn removed_running_node(event: gtk::gio::FileMonitorEvent, changed: &Path, running: &Path) -> bool {
+    matches!(
+        event,
+        gtk::gio::FileMonitorEvent::Deleted | gtk::gio::FileMonitorEvent::MovedOut
+    ) && changed == running
+}
 
 fn should_inhibit(capture_active: bool, window_focused: bool) -> bool {
     capture_active && window_focused
@@ -130,6 +163,7 @@ fn start_capture(
     button: &gtk::Button,
     inhibitor: &Rc<InhibitController>,
 ) -> Result<(), String> {
+    let capture_path = path.to_path_buf();
     let path = path.to_string_lossy();
     if !capture::valid_device(&path) {
         return Err("Invalid video device path.".to_owned());
@@ -163,11 +197,129 @@ fn start_capture(
         picture.set_paintable(None::<&gtk::gdk::Paintable>);
         return Err(format!("Cannot start capture: {err}"));
     }
-    *active.borrow_mut() = Some(Running { pipeline, watch });
+    *active.borrow_mut() = Some(Running {
+        path: capture_path,
+        pipeline,
+        watch,
+    });
     inhibitor.set_capture_active(true);
     message.set_visible(false);
     button.set_label("Stop");
     eprintln!("Started capture from {path}");
+    Ok(())
+}
+
+fn try_start_capture(
+    explicit: Option<&str>,
+    active: &ActiveCapture,
+    picture: &gtk::Picture,
+    message: &gtk::Label,
+    button: &gtk::Button,
+    inhibitor: &Rc<InhibitController>,
+) {
+    let result = device::resolve_capture_node(
+        Path::new("/dev"),
+        Path::new("/sys/class/video4linux"),
+        explicit,
+    )
+    .and_then(|path| start_capture(&path, active, picture, message, button, inhibitor));
+    if let Err(err) = result {
+        notice(message, &err);
+    }
+}
+
+fn watch_video_nodes(
+    window: &gtk::ApplicationWindow,
+    active: &ActiveCapture,
+    preference: &Rc<Cell<CapturePreference>>,
+    widgets: (
+        &gtk::Picture,
+        &gtk::Label,
+        &gtk::Button,
+        &Rc<InhibitController>,
+    ),
+    explicit: Option<String>,
+) -> Result<(), glib::Error> {
+    let (picture, message, button, inhibitor) = widgets;
+    let monitor = gio::File::for_path("/dev")
+        .monitor_directory(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE)?;
+    let pending = Rc::new(RefCell::new(None::<glib::SourceId>));
+    {
+        let (window, active, preference, picture, message, button, inhibitor, pending) = (
+            window.downgrade(),
+            active.clone(),
+            preference.clone(),
+            picture.clone(),
+            message.clone(),
+            button.clone(),
+            inhibitor.clone(),
+            pending.clone(),
+        );
+        monitor.connect_changed(move |_, file, _, event| {
+            let Some(path) = file.path() else {
+                return;
+            };
+            if !is_video_node(&path) {
+                return;
+            }
+            let running_removed = {
+                let current = active.borrow();
+                current
+                    .as_ref()
+                    .is_some_and(|running| removed_running_node(event, &path, &running.path))
+            };
+            if running_removed {
+                stop(&active, &picture, &button, &inhibitor);
+                notice(&message, "KVM disconnected. Waiting for the module...");
+            }
+            if !matches!(
+                event,
+                gio::FileMonitorEvent::Created
+                    | gio::FileMonitorEvent::MovedIn
+                    | gio::FileMonitorEvent::Deleted
+                    | gio::FileMonitorEvent::MovedOut
+            ) {
+                return;
+            }
+            if let Some(id) = pending.borrow_mut().take() {
+                id.remove();
+            }
+            let (window, active, preference, picture, message, button, inhibitor) = (
+                window.clone(),
+                active.clone(),
+                preference.clone(),
+                picture.clone(),
+                message.clone(),
+                button.clone(),
+                inhibitor.clone(),
+            );
+            let pending_for_timeout = pending.clone();
+            let explicit = explicit.clone();
+            let id = glib::timeout_add_local_once(Duration::from_millis(500), move || {
+                pending_for_timeout.borrow_mut().take();
+                let already_running = active.borrow().is_some();
+                if window.upgrade().is_some() && should_autostart(preference.get(), already_running)
+                {
+                    try_start_capture(
+                        explicit.as_deref(),
+                        &active,
+                        &picture,
+                        &message,
+                        &button,
+                        &inhibitor,
+                    );
+                }
+            });
+            *pending.borrow_mut() = Some(id);
+        });
+    }
+    window.connect_close_request(move |_| {
+        monitor.cancel();
+        if let Some(id) = pending.borrow_mut().take() {
+            id.remove();
+        }
+        glib::Propagation::Proceed
+    });
     Ok(())
 }
 
@@ -239,8 +391,20 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     overlay.add_controller(activity);
 
     let active: ActiveCapture = Rc::new(RefCell::new(None));
+    let preference = Rc::new(Cell::new(CapturePreference::Automatic));
     let inhibitor = Rc::new(InhibitController::new(&window));
     let explicit = initial_device.map(str::to_owned);
+    let monitor_error = watch_video_nodes(
+        &window,
+        &active,
+        &preference,
+        (&picture, &message, &start, &inhibitor),
+        explicit.clone(),
+    )
+    .err();
+    if let Some(err) = &monitor_error {
+        eprintln!("Automatic device monitoring unavailable: {err}");
+    }
 
     {
         let inhibitor = inhibitor.clone();
@@ -248,32 +412,30 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     }
 
     {
-        let (active, picture, message, button, inhibitor) = (
+        let (active, picture, message, button, inhibitor, preference) = (
             active.clone(),
             picture.clone(),
             message.clone(),
             start.clone(),
             inhibitor.clone(),
+            preference.clone(),
         );
+        let explicit = explicit.clone();
         start.connect_clicked(move |_| {
             if active.borrow().is_some() {
+                preference.set(CapturePreference::Paused);
                 stop(&active, &picture, &button, &inhibitor);
-                notice(&message, "Stopped. Tap Start to resume.");
+                notice(&message, "Paused. Tap Start to resume automatic capture.");
             } else {
-                match device::resolve_capture_node(
-                    Path::new("/dev"),
-                    Path::new("/sys/class/video4linux"),
+                preference.set(CapturePreference::Automatic);
+                try_start_capture(
                     explicit.as_deref(),
-                ) {
-                    Ok(path) => {
-                        if let Err(err) =
-                            start_capture(&path, &active, &picture, &message, &button, &inhibitor)
-                        {
-                            notice(&message, &err);
-                        }
-                    }
-                    Err(err) => notice(&message, &err),
-                }
+                    &active,
+                    &picture,
+                    &message,
+                    &button,
+                    &inhibitor,
+                );
             }
         });
     }
@@ -317,11 +479,124 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     }
     window.present();
     start.emit_clicked();
+    if monitor_error.is_some() && active.borrow().is_none() {
+        notice(
+            &message,
+            "Device monitoring unavailable. Tap Start after connecting the module.",
+        );
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{is_double_click, reveals_controls, should_inhibit};
+    use super::{
+        is_double_click, is_video_node, removed_running_node, reveals_controls, should_autostart,
+        should_inhibit, CapturePreference,
+    };
+
+    #[test]
+    fn video_node_directory_monitor_observes_arrival_and_removal() {
+        use gtk4::{gio, glib, prelude::*};
+        use std::{
+            cell::Cell,
+            fs,
+            rc::Rc,
+            time::{Duration, SystemTime, UNIX_EPOCH},
+        };
+        let dir = std::env::temp_dir().join(format!(
+            "kvm-monitor-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir(&dir).unwrap();
+        let node = dir.join("video2");
+        let monitor = gio::File::for_path(&dir)
+            .monitor_directory(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE)
+            .unwrap();
+        let loop_ = glib::MainLoop::new(None, false);
+        let created = Rc::new(Cell::new(false));
+        let removed = Rc::new(Cell::new(false));
+        {
+            let (node, loop_, created, removed) = (
+                node.clone(),
+                loop_.clone(),
+                created.clone(),
+                removed.clone(),
+            );
+            monitor.connect_changed(move |_, file, _, event| {
+                if file.path().as_deref() != Some(node.as_path()) {
+                    return;
+                }
+                if event == gio::FileMonitorEvent::Created {
+                    created.set(true);
+                    fs::remove_file(&node).unwrap();
+                } else if event == gio::FileMonitorEvent::Deleted {
+                    removed.set(true);
+                    loop_.quit();
+                }
+            });
+        }
+        fs::write(&node, b"").unwrap();
+        let timeout_loop = loop_.clone();
+        let timeout =
+            glib::timeout_add_local_once(Duration::from_secs(3), move || timeout_loop.quit());
+        loop_.run();
+        if removed.get() {
+            timeout.remove();
+        }
+        monitor.cancel();
+        fs::remove_dir(&dir).unwrap();
+        assert!(
+            created.get() && removed.get(),
+            "GIO must report video node creation and deletion"
+        );
+    }
+
+    #[test]
+    fn unplugging_running_device_stops_capture_but_unrelated_changes_do_not() {
+        use gtk4::gio::FileMonitorEvent;
+        use std::path::Path;
+        let running = Path::new("/dev/video2");
+        assert!(removed_running_node(
+            FileMonitorEvent::Deleted,
+            running,
+            running
+        ));
+        assert!(removed_running_node(
+            FileMonitorEvent::MovedOut,
+            running,
+            running
+        ));
+        assert!(!removed_running_node(
+            FileMonitorEvent::Created,
+            running,
+            running
+        ));
+        assert!(!removed_running_node(
+            FileMonitorEvent::Deleted,
+            Path::new("/dev/video3"),
+            running
+        ));
+    }
+
+    #[test]
+    fn auto_capture_starts_only_when_not_paused_or_already_running() {
+        assert!(should_autostart(CapturePreference::Automatic, false));
+        assert!(!should_autostart(CapturePreference::Automatic, true));
+        assert!(!should_autostart(CapturePreference::Paused, false));
+    }
+
+    #[test]
+    fn watches_only_video_device_node_events() {
+        use std::path::Path;
+        assert!(is_video_node(Path::new("/dev/video2")));
+        assert!(!is_video_node(Path::new("/dev/video2-metadata")));
+        assert!(!is_video_node(Path::new("/dev/video")));
+        assert!(!is_video_node(Path::new("/dev/input/event0")));
+    }
 
     #[test]
     fn pointer_motion_or_touch_begin_reveals_controls() {
