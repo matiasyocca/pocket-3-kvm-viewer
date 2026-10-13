@@ -1,4 +1,4 @@
-use std::{cell::RefCell, path::Path, rc::Rc, sync::Once};
+use std::{cell::RefCell, path::Path, rc::Rc, sync::Once, time::Duration};
 
 use gst::prelude::*;
 use gstreamer as gst;
@@ -22,6 +22,29 @@ fn should_inhibit(capture_active: bool, window_focused: bool) -> bool {
 
 fn is_double_click(n_press: i32) -> bool {
     n_press == 2
+}
+
+fn reveals_controls(event: gtk::gdk::EventType) -> bool {
+    matches!(
+        event,
+        gtk::gdk::EventType::MotionNotify | gtk::gdk::EventType::TouchBegin
+    )
+}
+
+fn reset_controls_timer(controls: &gtk::Box, pending: &Rc<RefCell<Option<glib::SourceId>>>) {
+    controls.set_visible(true);
+    if let Some(id) = pending.borrow_mut().take() {
+        id.remove();
+    }
+    let weak_controls = controls.downgrade();
+    let pending_for_timeout = pending.clone();
+    let id = glib::timeout_add_local_once(Duration::from_secs(3), move || {
+        pending_for_timeout.borrow_mut().take();
+        if let Some(controls) = weak_controls.upgrade() {
+            controls.set_visible(false);
+        }
+    });
+    *pending.borrow_mut() = Some(id);
 }
 
 struct InhibitController {
@@ -180,6 +203,22 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     overlay.add_overlay(&message);
     window.set_child(Some(&overlay));
 
+    let pending_hide = Rc::new(RefCell::new(None));
+    reset_controls_timer(&controls, &pending_hide);
+    let activity = gtk::EventControllerLegacy::new();
+    activity.set_propagation_phase(gtk::PropagationPhase::Capture);
+    {
+        let controls = controls.clone();
+        let pending_hide = pending_hide.clone();
+        activity.connect_event(move |_, event| {
+            if reveals_controls(event.event_type()) {
+                reset_controls_timer(&controls, &pending_hide);
+            }
+            glib::Propagation::Proceed
+        });
+    }
+    overlay.add_controller(activity);
+
     let active: ActiveCapture = Rc::new(RefCell::new(None));
     let inhibitor = Rc::new(InhibitController::new(&window));
     let explicit = initial_device.map(str::to_owned);
@@ -263,7 +302,16 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_double_click, should_inhibit};
+    use super::{is_double_click, reveals_controls, should_inhibit};
+
+    #[test]
+    fn pointer_motion_or_touch_begin_reveals_controls() {
+        use gtk4::gdk::EventType;
+        assert!(reveals_controls(EventType::MotionNotify));
+        assert!(reveals_controls(EventType::TouchBegin));
+        assert!(!reveals_controls(EventType::TouchUpdate));
+        assert!(!reveals_controls(EventType::ButtonPress));
+    }
 
     #[test]
     fn toggles_only_on_second_click() {
