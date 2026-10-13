@@ -24,11 +24,25 @@ fn is_double_click(n_press: i32) -> bool {
     n_press == 2
 }
 
-fn reveals_controls(event: gtk::gdk::EventType) -> bool {
-    matches!(
-        event,
-        gtk::gdk::EventType::MotionNotify | gtk::gdk::EventType::TouchBegin
-    )
+fn reveals_controls(
+    event: gtk::gdk::EventType,
+    position: Option<(f64, f64)>,
+    last_pointer: &mut Option<(f64, f64)>,
+) -> bool {
+    match event {
+        gtk::gdk::EventType::TouchBegin => true,
+        gtk::gdk::EventType::MotionNotify => {
+            let Some(position) = position else {
+                return false;
+            };
+            if *last_pointer == Some(position) {
+                return false;
+            }
+            *last_pointer = Some(position);
+            true
+        }
+        _ => false,
+    }
 }
 
 fn reset_controls_timer(controls: &gtk::Box, pending: &Rc<RefCell<Option<glib::SourceId>>>) {
@@ -210,8 +224,13 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     {
         let controls = controls.clone();
         let pending_hide = pending_hide.clone();
+        let last_pointer = RefCell::new(None);
         activity.connect_event(move |_, event| {
-            if reveals_controls(event.event_type()) {
+            if reveals_controls(
+                event.event_type(),
+                event.position(),
+                &mut last_pointer.borrow_mut(),
+            ) {
                 reset_controls_timer(&controls, &pending_hide);
             }
             glib::Propagation::Proceed
@@ -307,10 +326,54 @@ mod tests {
     #[test]
     fn pointer_motion_or_touch_begin_reveals_controls() {
         use gtk4::gdk::EventType;
-        assert!(reveals_controls(EventType::MotionNotify));
-        assert!(reveals_controls(EventType::TouchBegin));
-        assert!(!reveals_controls(EventType::TouchUpdate));
-        assert!(!reveals_controls(EventType::ButtonPress));
+        let mut last_pointer = None;
+        assert!(reveals_controls(
+            EventType::MotionNotify,
+            Some((1.0, 1.0)),
+            &mut last_pointer,
+        ));
+        assert!(reveals_controls(
+            EventType::TouchBegin,
+            None,
+            &mut last_pointer,
+        ));
+        assert!(!reveals_controls(
+            EventType::TouchUpdate,
+            None,
+            &mut last_pointer,
+        ));
+        assert!(!reveals_controls(
+            EventType::ButtonPress,
+            None,
+            &mut last_pointer,
+        ));
+    }
+
+    #[test]
+    fn stationary_pointer_does_not_reveal_controls_after_hide() {
+        use gtk4::gdk::EventType;
+        let mut last_pointer = None;
+        assert!(reveals_controls(
+            EventType::MotionNotify,
+            Some((42.0, 24.0)),
+            &mut last_pointer,
+        ));
+        // The timer hides the controls. GTK may repick the widget under a stationary cursor.
+        assert!(!reveals_controls(
+            EventType::MotionNotify,
+            Some((42.0, 24.0)),
+            &mut last_pointer,
+        ));
+        assert!(reveals_controls(
+            EventType::MotionNotify,
+            Some((44.0, 24.0)),
+            &mut last_pointer,
+        ));
+        assert!(reveals_controls(
+            EventType::TouchBegin,
+            None,
+            &mut last_pointer,
+        ));
     }
 
     #[test]
