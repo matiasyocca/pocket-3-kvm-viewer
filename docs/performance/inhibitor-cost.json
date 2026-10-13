@@ -1,0 +1,9 @@
+{
+  "candidate": 14,
+  "count": 20,
+  "median_acquire_us": 7793.5,
+  "max_acquire_us": 11112,
+  "total_acquire_us": 170344,
+  "scope": "Real logind acquisition transitions; no display, stream or artificial delayed service. Acquisition is event-driven, not per frame.",
+  "decision": "No steady-state CPU optimization demonstrated; do not add an asynchronous state machine solely for CPU savings. Delayed-service responsiveness remains a separate potential feature."
+}

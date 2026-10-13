@@ -1,0 +1,161 @@
+[
+  {
+    "command": [
+      "cargo",
+      "fmt"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-00.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "fmt",
+      "--check"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-01.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-02.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "ui::tests::pipeline_",
+      "--",
+      "--ignored"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-03.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--features",
+      "gl-conversion,native-yuv,background-throttle"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-04.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--features",
+      "gl-conversion,native-yuv,background-throttle",
+      "ui::tests::pipeline_",
+      "--",
+      "--ignored"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-05.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--features",
+      "gl-conversion,native-yuv,background-throttle",
+      "ui::tests::visibility_",
+      "--",
+      "--ignored"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-06.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--features",
+      "gl-conversion,native-yuv,background-throttle",
+      "gl_",
+      "--",
+      "--ignored"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-07.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--features",
+      "gl-conversion,native-yuv,background-throttle",
+      "capture::tests::native_software_graph_delivers_at_the_original_mode",
+      "--",
+      "--ignored",
+      "--exact"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-08.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--features",
+      "gl-conversion,native-yuv,background-throttle",
+      "capture::tests::sink_accepts_native_yuy2",
+      "--",
+      "--ignored",
+      "--exact"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-09.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--all-features"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-10.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "clippy",
+      "--all-targets",
+      "--locked",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "returncode": 0,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-11.log"
+  },
+  {
+    "command": [
+      "cargo",
+      "clippy",
+      "--all-targets",
+      "--locked",
+      "--features",
+      "gl-conversion,native-yuv,background-throttle",
+      "--",
+      "-D",
+      "warnings"
+    ],
+    "returncode": 101,
+    "log": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gate-12.log"
+  }
+]

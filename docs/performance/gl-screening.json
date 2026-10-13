@@ -1,0 +1,48 @@
+{
+  "status": "screening benefit demonstrated, production promotion deferred at bounded deadline: no verified release binary or independent/hardware fallback confirmation; partial patch archived in deferred-gl/",
+  "medians_cpu_one_core": {
+    "probe-native-no-gl": {
+      "visible": 23.46523656998492
+    },
+    "probe-native-60": {
+      "visible": 96.17467541912278,
+      "hidden": 1.4665601582245582,
+      "returned": 97.72519919587907
+    },
+    "probe-gl-60": {
+      "visible": 7.732728665393052,
+      "hidden": 3.9330271214779313,
+      "returned": 7.732701438108494
+    }
+  },
+  "visible_cpu_reduction_vs_native_without_gl_features_pct": 67.04602298668401,
+  "sink_fps_median": 59.998,
+  "source_fps_median": 59.998,
+  "sink_caps": "video/x-raw(memory:GLMemory), format=(string)RGBA, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, texture-target=(string)2D",
+  "source_caps": "video/x-raw, format=(string)YUY2, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, colorimetry=(string)2:4:5:1",
+  "memory_lines": [
+    "BENCH_MEMORY location=source types=dmabuf",
+    "BENCH_MEMORY location=display types=GLMemoryPBO"
+  ],
+  "hardware_gl_identity": [
+    "0:00:00.881741604     339157     339157 INFO               glcontext gstglcontext.c:1116:_create_context_info:<glwrappedcontext0> GL_VERSION: OpenGL ES 3.2 Mesa 26.1.4",
+    "0:00:00.881747762     339157     339157 INFO               glcontext gstglcontext.c:1121:_create_context_info:<glwrappedcontext0> GL_VENDOR: Intel",
+    "0:00:00.881750365     339157     339157 INFO               glcontext gstglcontext.c:1123:_create_context_info:<glwrappedcontext0> GL_RENDERER: Mesa Intel(R) UHD Graphics (TGL GT2)",
+    "0:00:01.024209108     339157     339230 INFO               glcontext gstglcontext.c:1116:_create_context_info:<glcontextegl0> GL_VERSION: OpenGL ES 3.2 Mesa 26.1.4",
+    "0:00:01.024216438     339157     339230 INFO               glcontext gstglcontext.c:1121:_create_context_info:<glcontextegl0> GL_VENDOR: Intel",
+    "0:00:01.024220176     339157     339230 INFO               glcontext gstglcontext.c:1123:_create_context_info:<glcontextegl0> GL_RENDERER: Mesa Intel(R) UHD Graphics (TGL GT2)"
+  ],
+  "scoped_rendering_check": {
+    "native": "${HOME}/.hermes/cache/scratch/kvm-probe-native-render.png",
+    "gl": "${HOME}/.hermes/cache/scratch/kvm-probe-gl-render.png",
+    "result": "complete target console, advancing live build content, no obvious new color/text/aspect corruption; compositor opacity present in both"
+  },
+  "limits": [
+    "Not GPU/total-power or end-to-end-latency evidence.",
+    "All-features native system-memory path regressed to ~96% CPU, but GL-only native fallback remained ~21.465%; optional DMABuf and GL features must be isolated. A working GL graph and bounded fallback remain required.",
+    "GL hidden processing costs ~3.933% without BG pause; combined production feature must be benchmarked.",
+    "Source allocator reported dmabuf under ordinary YUY2 caps, not direct DMA_DRM negotiation; no end-to-end zero-copy claim."
+  ],
+  "source_probe_worktree": "${HOME}/.hermes/cache/scratch/kvm-pipeline-probes-1791910988-277141",
+  "raw_results": "probe-results.jsonl"
+}

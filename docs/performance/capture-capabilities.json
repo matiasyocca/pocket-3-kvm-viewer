@@ -1,0 +1,15 @@
+{
+  "capture_node": "/dev/video2",
+  "advertised_sizes": [
+    [
+      1920,
+      1080
+    ]
+  ],
+  "advertised_fps": [
+    60.0,
+    30.0
+  ],
+  "raw": "ioctl: VIDIOC_ENUM_FMT\n\tType: Video Capture\n\n\t[0]: 'YUYV' (YUYV 4:2:2)\n\t\tSize: Discrete 1920x1080\n\t\t\tInterval: Discrete 0.017s (60.000 fps)\n\t\t\tInterval: Discrete 0.033s (30.000 fps)",
+  "candidate_8_verdict": "No lower native capture resolution is advertised by this hardware; do not add CPU scaling or silently reduce text clarity to manufacture a gain."
+}

@@ -1,0 +1,67 @@
+{
+  "status": "PARTIAL: not ready to promote; release builds and independent parent review pending at user deadline",
+  "root": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c",
+  "head": "58f03965eec5d35ed2f206435bfec91bdbd98314",
+  "patch": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/shared-gl.patch",
+  "patch_sha256": "e98e8ffc283e8a10b0bbe5d3e5601fcb137ab04e5d0768e5eb7a484da069838d",
+  "baseline": "Git index containing parent staged BG/native-YUV baseline; no index changes or commits by subagent",
+  "index_blobs": {
+    "Cargo.lock": "38fd2c4cb273da209044869224d62d00425e8b1a",
+    "Cargo.toml": "7224f1afcccb4b6708f6b42ad7c2e61d47568522",
+    "README.md": "dc25707eadda6211834367c1862c3e619023b873",
+    "flake.nix": "b0c2bcf3e6449268eb4c8fcd9c9c865c1c58001d",
+    "src/capture.rs": "fb7d4fc1beb8a84c2666e35d328344d5eecb9246",
+    "src/ui.rs": "2e1ef663c5aceec40ddcf2b119a63a5f4f1aaf76"
+  },
+  "modified": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "README.md",
+    "flake.nix",
+    "src/capture.rs",
+    "src/ui.rs"
+  ],
+  "working_sha256": {
+    "Cargo.lock": "f85484c83453758b1dbb04e4c0441704b76983d4f681b73950bb2eea5825bb19",
+    "Cargo.toml": "8c73262ced22d217f8cf5572bd0fcb30d07411ab9df885ce69206200db7a823d",
+    "README.md": "f4adb8edb7bba897cb4166ebfdc3212be4e3a70b35db7ab90e733cc76b3a4861",
+    "flake.nix": "9ae8cb5cb00895c8844634feb2f0a3db3aa4769ae132b33cf9e4c703f5a36899",
+    "src/capture.rs": "1ecacce6da621aa9142b3468f23ec65d1b20e5afc1367526f812186e46ad8203",
+    "src/ui.rs": "3266e28aecd099b7663579de8445b661b11837e84de2e9793d28cdb77a7a1f62"
+  },
+  "features": "gl-conversion,native-yuv,background-throttle",
+  "dmabuf": false,
+  "nix_build_features_changed": false,
+  "gates": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/artifacts/gates.json",
+  "final_clippy_and_live_buffer_evidence": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/final-confirmation.log",
+  "regression_evidence": "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/fallback-regressions.log",
+  "red_green_logs": [
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-01-green.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-01-red.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-02-green.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-02-red.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-03-green.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-03-red.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-04-green.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-04-red.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-05-green.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-05-red.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-06-green.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-06-red.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-07-green.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-07-red.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-08-green.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-08-red.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-09-green.log",
+    "${HOME}/.hermes/cache/scratch/kvm-gl-20261013-c/tdd-09-red.log"
+  ],
+  "note": "TDD 02/03 provisional RGB selection was superseded by parent GL-only native fallback measurement; TDD04 proves restored native selection. Additional cancellation/live-sink tests are characterization of implemented lifecycle. No hardware or presented windows used.",
+  "release_commands_pending": [
+    "flock ${HOME}/.hermes/cache/scratch/kvm-exclusive-bench.lock nix develop -c cargo build --locked --release",
+    "flock ${HOME}/.hermes/cache/scratch/kvm-exclusive-bench.lock nix develop -c cargo build --locked --release --features gl-conversion,native-yuv,background-throttle"
+  ],
+  "signatures": {
+    "gl": "v4l2src ! queue max-size-buffers=2 leaky=downstream ! glupload ! glcolorconvert ! video/x-raw(memory:GLMemory),format=RGBA,texture-target=2D ! gtk4paintablesink sync=false",
+    "fallback": "v4l2src ! queue max-size-buffers=2 leaky=downstream ! videoconvert ! gtk4paintablesink sync=false"
+  }
+}

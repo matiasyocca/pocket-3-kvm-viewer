@@ -68,8 +68,26 @@ Hardware-free synthetic source tests independently reproduced the baseline failu
 
 The integrated real-capture check at unchanged 1080p60 measured 21.065% visible, 1.533% hidden, and 21.132% returned CPU per core, with median sink delivery 59.994 FPS and no capture errors. These are consistent with the native-YUV baseline; no healthy-stream CPU saving is attributed to error cleanup. Its demonstrated net benefit is prompt release of failed-pipeline resources. Evidence is in `performance/resource-cleanup.json` and the `native-error-cleanup` raw samples. Final safety re-review passed; this resource-retirement fix is accepted without claiming a healthy-stream CPU improvement.
 
+## GL and direct-import disposition (candidates 3 and 5)
+
+A hardware-GL comparison probe delivered unchanged 1920x1080/60 source and sink buffers. Three 15-second visible samples measured native YUV 23.465% versus explicit GL upload/conversion/shared RGBA textures 7.733% of one core. GLMemory RGBA/2D, GLMemoryPBO allocator and Intel UHD (TGL GT2) Mesa OpenGL ES were verified; scoped images showed complete live console content. GL-only feature confirmation reproduced ~7.733%; its native fallback graph remained ~21.465%, not the ~96% all-features regression. These are CPU/sink-delivery results, not total power or panel latency.
+
+GL was not promoted. The bounded production/fallback implementation finished synthetic tests and Clippy but did not supply a verified release binary, independent production review, real-device fallback or combined compositor verification. Its partial patch/manifest are preserved in `performance/deferred-gl/`; `performance/gl-screening.json` and `performance/probe-results.jsonl` preserve screening evidence. The current package does not enable GL or DMABuf backend features.
+
+Direct DMABuf/DMA_DRM/YUYV import actually negotiated, delivered ~60 FPS and rendered target content. It nevertheless used 96.859% CPU with all probe features and 97.514% without GL support, versus ~23.465% native YUV. It was rejected, not mistaken for a capability failure or zero-copy efficiency win. See `performance/dmabuf-verdict.json`.
+
+The reproducible comparison-tool source is archived as `performance/pipeline-probe-source.tar.gz`, separate from the production app. Screenshots stay private in scratch.
+
+## Stopping point for the optimization campaign
+
+Full candidate dispositions are in `performance/candidate-decisions.json` (all 15 ranks accounted for). Native YUV, failure-resource retirement and compositor suspension are retained in separate reviewed commits. The device supports no lower native resolution; an incidental logind CPU rewrite was not justified by 20 transition measurements (median 7.794 ms, max 11.112 ms). The opt-in ignored inhibitor benchmark in `src/inhibit.rs` reproduces that measurement without a display or capture.
+
+Source 30 FPS screened at 3.733% GL CPU versus 7.733% at 60 FPS, with actual source/sink throughput ~30 versus ~60; this halves temporal resolution. No economy option was shipped and the default was not lowered. Other RGB, renderer, queue/thread, wider ownership and compiler experiments were deferred, not declared completed gains. Initial failed transport samples remain excluded. No further performance tests are planned as part of this campaign.
+
+Physical suspended unplug/replug, touchscreen behavior, full color-chart correctness, total power and first fresh HDMI/panel latency remain unverified. Synthetic hotplug/manual-intent/lifetime gates and real return-to-render tests do not replace those checks. In particular, the broader pre-existing UI ownership audit was deferred; this report does not claim leak-free UI teardown.
+
 ## Remaining candidate decisions
 
-Candidate 1 (visibility-driven suspension) is accepted after corrected final safety review and packaged verification. Candidate 3 (GL) has a bounded finishing pass; all further optimization work is deferred at the user's wrap-up request. Candidate 4 (error cleanup) is accepted and committed. No unmeasured fix has been declared a net improvement. Quality-reducing source FPS/resolution changes will not silently replace the default stream; unsupported/ineffective candidates are to be recorded and dropped.
+Candidate 1 (visibility-driven suspension) is accepted after corrected final safety review and packaged verification. Candidate 3 (GL) is deferred: its bounded implementation did not finish release/production-review/hardware-fallback verification. All further optimization work is stopped at the user's wrap-up request. Candidate 4 (error cleanup) is accepted and committed. No unmeasured fix has been declared a net improvement. Quality-reducing source FPS/resolution changes will not silently replace the default stream; unsupported/ineffective candidates are to be recorded and dropped.
 
 Total energy/power and full end-to-end latency have not been measured. CPU results alone do not prove a total-power reduction.

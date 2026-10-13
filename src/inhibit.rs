@@ -46,6 +46,27 @@ mod tests {
     use super::SleepInhibitor;
 
     #[test]
+    #[ignore = "benchmark: requires systemd-logind; no display or capture"]
+    fn benchmark_inhibitor_transition_cost() {
+        let mut times = Vec::new();
+        for _ in 0..20 {
+            let began = std::time::Instant::now();
+            let lock = SleepInhibitor::acquire().expect("real logind inhibitor");
+            times.push(began.elapsed().as_micros());
+            drop(lock);
+        }
+        times.sort_unstable();
+        let middle = times.len() / 2;
+        let median = (times[middle - 1] + times[middle]) as f64 / 2.0;
+        eprintln!(
+            "BENCH_INHIBITOR count={} median_us={median:.1} max_us={} total_us={}",
+            times.len(),
+            times.last().unwrap(),
+            times.iter().sum::<u128>()
+        );
+    }
+
+    #[test]
     #[ignore = "needs a systemd-logind system bus"]
     fn focused_capture_holds_and_releases_a_logind_lock() {
         let lock = SleepInhibitor::acquire().expect("logind must issue an inhibitor FD");

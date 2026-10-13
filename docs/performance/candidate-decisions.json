@@ -1,0 +1,95 @@
+{
+  "scope": "User chose wrap-up: correctness/review/package, one bounded GL pass, then normal use. No further performance experiments.",
+  "ranked_candidates": [
+    {
+      "rank": 1,
+      "disposition": "retained",
+      "evidence": "Compositor pause/resume committed b9eb5c7 after corrected final re-review and package verification; near-zero hidden CPU, unchanged1080p60 returns, manualStop preserved."
+    },
+    {
+      "rank": 2,
+      "disposition": "retained",
+      "evidence": "Native YUV committed cc8ed41; ~61% less visible CPU in paired comparison."
+    },
+    {
+      "rank": 3,
+      "disposition": "screened/deferred",
+      "evidence": "GL screen ~23.465 ->7.733% one-core CPU at~60FPS; bounded implementation lacked verified release/independent production review/hardware fallback confirmation. Partial patch archived, no GL promotion."
+    },
+    {
+      "rank": 4,
+      "disposition": "retained",
+      "evidence": "Failed graph/source FD retirement committed58f0396, failure FDs1->0, no healthy CPU claim."
+    },
+    {
+      "rank": 5,
+      "disposition": "rejected",
+      "evidence": "Valid direct DMABuf ~97.5% one-core versus native~23.5%; no importer promotion."
+    },
+    {
+      "rank": 6,
+      "disposition": "screened/deferred",
+      "evidence": "Source30fps ~3.7 vs7.7% GL CPU, but temporal quality reduction; no implementation or default change."
+    },
+    {
+      "rank": 7,
+      "disposition": "deferred",
+      "evidence": "Upstream frame dropping not benchmarked or implemented."
+    },
+    {
+      "rank": 8,
+      "disposition": "rejected",
+      "evidence": "Device advertises only1920x1080; lower native resolution unsupported."
+    },
+    {
+      "rank": 9,
+      "disposition": "deferred",
+      "evidence": "RGB-family negotiation not benchmarked or changed."
+    },
+    {
+      "rank": 10,
+      "disposition": "inconclusive/deferred",
+      "evidence": "Initial IO alternatives failed/stalled; excluded. Further tuning stopped."
+    },
+    {
+      "rank": 11,
+      "disposition": "partially verified/deferred",
+      "evidence": "Current GL hardware Intel UHD verified, renderer comparisons not performed."
+    },
+    {
+      "rank": 12,
+      "disposition": "deferred",
+      "evidence": "Queue/thread tuning not performed."
+    },
+    {
+      "rank": 13,
+      "disposition": "deferred",
+      "evidence": "Broader pre-existing UI ownership audit not performed; no blanket leak-free teardown claim."
+    },
+    {
+      "rank": 14,
+      "disposition": "rejected as CPU optimization",
+      "evidence": "20 logind acquisitions median7.794ms/max11.112ms; event-driven already, no steady CPU saving demonstrated."
+    },
+    {
+      "rank": 15,
+      "disposition": "deferred",
+      "evidence": "Compiler/linker tuning not performed."
+    }
+  ],
+  "defaults": "Full resolution and 60fps preserved; no frame hash/inactivity capture throttle or renderer/env override.",
+  "final_quality_gates": {
+    "default_regular_tests_passed": 16,
+    "native_yuv_background_regular_tests_passed": 19,
+    "selected_pipeline_fixtures_passed": 9,
+    "selected_visibility_fixtures_passed": 2,
+    "diagnostic_non_unique_fixture_passed": 1,
+    "python_harness_tests_passed": 25,
+    "format_default_and_feature_clippy_release_builds": "passed",
+    "x86_64_nix_package_and_flake_checks": "passed",
+    "aarch64": "declared, not build-tested",
+    "production_features": ["native-yuv", "background-throttle"],
+    "benchmark_instrumentation_in_package": false,
+    "independent_reviews": "all retained production fixes and final ignored timing fixture passed"
+  }
+}

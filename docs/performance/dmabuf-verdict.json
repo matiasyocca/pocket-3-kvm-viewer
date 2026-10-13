@@ -1,0 +1,54 @@
+{
+  "candidate": 5,
+  "disposition": "rejected: successful direct DMABuf negotiation/rendering, but substantially higher CPU than accepted native YUV and explicit GL path",
+  "medians_visible_cpu_one_core": {
+    "probe-native-no-gl": 23.46523656998492,
+    "probe-native-gl-only": 21.465068200239365,
+    "probe-direct-dmabuf": 96.8588404916934,
+    "probe-direct-dmabuf-no-gl": 97.51447207117113
+  },
+  "measurement": "three 15-second samples each at 1080p60, owned viewer/unfocused visible; same driver/device/geometry",
+  "proof": {
+    "probe-native-gl-only": {
+      "sink_fps_median": 59.994,
+      "source_fps_median": 59.994,
+      "sink_caps": "video/x-raw, format=(string)YUY2, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, colorimetry=(string)2:4:5:1",
+      "source_caps": "video/x-raw, format=(string)YUY2, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, colorimetry=(string)2:4:5:1",
+      "context_memory": [
+        "BENCH_CONTEXT gl_present=true mode=native",
+        "BENCH_MEMORY location=source types=dmabuf",
+        "BENCH_MEMORY location=display types=dmabuf"
+      ]
+    },
+    "probe-direct-dmabuf": {
+      "sink_fps_median": 59.998,
+      "source_fps_median": 59.998,
+      "sink_caps": "video/x-raw(memory:DMABuf), format=(string)DMA_DRM, drm-format=(string)YUYV, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, colorimetry=(string)2:4:5:1",
+      "source_caps": "video/x-raw(memory:DMABuf), format=(string)DMA_DRM, drm-format=(string)YUYV, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, colorimetry=(string)2:4:5:1",
+      "context_memory": [
+        "BENCH_CONTEXT gl_present=true mode=dmabuf",
+        "BENCH_MEMORY location=source types=dmabuf",
+        "BENCH_MEMORY location=display types=dmabuf"
+      ]
+    },
+    "probe-direct-dmabuf-no-gl": {
+      "sink_fps_median": 59.996,
+      "source_fps_median": 59.996,
+      "sink_caps": "video/x-raw(memory:DMABuf), format=(string)DMA_DRM, drm-format=(string)YUYV, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, colorimetry=(string)2:4:5:1",
+      "source_caps": "video/x-raw(memory:DMABuf), format=(string)DMA_DRM, drm-format=(string)YUYV, width=(int)1920, height=(int)1080, framerate=(fraction)60/1, pixel-aspect-ratio=(fraction)1/1, interlace-mode=(string)progressive, colorimetry=(string)2:4:5:1",
+      "context_memory": [
+        "BENCH_CONTEXT gl_present=false mode=dmabuf",
+        "BENCH_MEMORY location=source types=dmabuf",
+        "BENCH_MEMORY location=display types=dmabuf"
+      ]
+    }
+  },
+  "scoped_image": "${HOME}/.hermes/cache/scratch/kvm-probe-dmabuf-render.png",
+  "visual_verification": "target console visible with advancing content, no gross corruption; compositor opacity still present",
+  "limits": [
+    "GL-only native fallback remains efficient; all-features regression must not be attributed to GL alone.",
+    "Successful memory:DMABuf/DMA_DRM/YUYV plus dmabuf allocators proves direct negotiation, not lower total energy or fully measured end-to-end zero-copy.",
+    "Initial transport errors documented elsewhere do not determine this valid result."
+  ],
+  "production_change": "none; do not enable dmabuf feature or force import based only on capability."
+}
