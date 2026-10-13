@@ -78,17 +78,32 @@ fn reveals_controls(
     }
 }
 
-fn reset_controls_timer(controls: &gtk::Box, pending: &Rc<RefCell<Option<glib::SourceId>>>) {
+fn cursor_name_for_controls(visible: bool) -> Option<&'static str> {
+    if visible {
+        None
+    } else {
+        Some("none")
+    }
+}
+
+fn reset_controls_timer(
+    controls: &gtk::Box,
+    overlay: &gtk::Overlay,
+    pending: &Rc<RefCell<Option<glib::SourceId>>>,
+) {
     controls.set_visible(true);
+    overlay.set_cursor_from_name(cursor_name_for_controls(true));
     if let Some(id) = pending.borrow_mut().take() {
         id.remove();
     }
     let weak_controls = controls.downgrade();
+    let weak_overlay = overlay.downgrade();
     let pending_for_timeout = pending.clone();
     let id = glib::timeout_add_local_once(Duration::from_secs(3), move || {
         pending_for_timeout.borrow_mut().take();
-        if let Some(controls) = weak_controls.upgrade() {
+        if let (Some(controls), Some(overlay)) = (weak_controls.upgrade(), weak_overlay.upgrade()) {
             controls.set_visible(false);
+            overlay.set_cursor_from_name(cursor_name_for_controls(false));
         }
     });
     *pending.borrow_mut() = Some(id);
@@ -370,11 +385,12 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     window.set_child(Some(&overlay));
 
     let pending_hide = Rc::new(RefCell::new(None));
-    reset_controls_timer(&controls, &pending_hide);
+    reset_controls_timer(&controls, &overlay, &pending_hide);
     let activity = gtk::EventControllerLegacy::new();
     activity.set_propagation_phase(gtk::PropagationPhase::Capture);
     {
         let controls = controls.clone();
+        let weak_overlay = overlay.downgrade();
         let pending_hide = pending_hide.clone();
         let last_pointer = RefCell::new(None);
         activity.connect_event(move |_, event| {
@@ -383,7 +399,9 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
                 event.position(),
                 &mut last_pointer.borrow_mut(),
             ) {
-                reset_controls_timer(&controls, &pending_hide);
+                if let Some(overlay) = weak_overlay.upgrade() {
+                    reset_controls_timer(&controls, &overlay, &pending_hide);
+                }
             }
             glib::Propagation::Proceed
         });
@@ -490,9 +508,43 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
 #[cfg(test)]
 mod tests {
     use super::{
-        is_double_click, is_video_node, removed_running_node, reveals_controls, should_autostart,
-        should_inhibit, CapturePreference,
+        cursor_name_for_controls, is_double_click, is_video_node, removed_running_node,
+        reveals_controls, should_autostart, should_inhibit, CapturePreference,
     };
+
+    #[test]
+    #[ignore = "requires an interactive GTK display"]
+    fn overlay_cursor_tracks_controls_timeout_and_recovery() {
+        use super::reset_controls_timer;
+        use gtk4::{glib, prelude::*};
+        use std::{cell::RefCell, rc::Rc, time::Duration};
+        gtk4::init().unwrap();
+        let overlay = gtk4::Overlay::new();
+        let controls = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        overlay.add_overlay(&controls);
+        let pending = Rc::new(RefCell::new(None));
+        reset_controls_timer(&controls, &overlay, &pending);
+        assert!(controls.is_visible());
+        assert!(overlay.cursor().is_none());
+        let loop_ = glib::MainLoop::new(None, false);
+        let timeout_loop = loop_.clone();
+        glib::timeout_add_local_once(Duration::from_millis(3200), move || timeout_loop.quit());
+        loop_.run();
+        assert!(!controls.is_visible());
+        assert_eq!(overlay.cursor().unwrap().name().as_deref(), Some("none"));
+        reset_controls_timer(&controls, &overlay, &pending);
+        assert!(controls.is_visible());
+        assert!(overlay.cursor().is_none());
+        if let Some(id) = pending.borrow_mut().take() {
+            id.remove();
+        };
+    }
+
+    #[test]
+    fn cursor_is_blank_only_while_controls_are_hidden() {
+        assert_eq!(cursor_name_for_controls(true), None);
+        assert_eq!(cursor_name_for_controls(false), Some("none"));
+    }
 
     #[test]
     fn video_node_directory_monitor_observes_arrival_and_removal() {
