@@ -37,9 +37,11 @@ Install the optional module. Connect the target's HDMI OUT to the module's HDMI 
 
 Video-node numbering is not stable. `v4l2-ctl --list-devices`, `v4l2-ctl -d /dev/videoX --all`, or `/sys/class/video4linux/video*/name` can identify the device. A camera or metadata-only node may appear in the list; try a different node if the view is wrong or the pipeline reports an error. The chosen `/dev/videoX` must be readable by the current user. If capture fails, check permissions and `GST_DEBUG=2 cargo run` before changing system permissions. Never run the GUI as root just to access a video node.
 
+For an already identified node, `cargo run --release -- --device /dev/video2` opens the same window and starts capture immediately; substitute the actual device path. An invalid argument exits with a usage message. This is useful when the hardware routes the built-in keyboard to the target before you can select a device.
+
 ## Tests
 
-`cargo fmt --check && cargo test && cargo check && cargo build --release`. After opening the GUI on real hardware, test live target BIOS/desktop video, fullscreen/exit, stop/start, HDMI reconnect, window close/reopen, and USB input switching and return. Measure latency/CPU and negotiated formats on the target machine rather than promising a particular frame rate. The pipeline favors fresh frames by using a two-buffer leaky queue and `sync=false`.
+`cargo fmt --check && cargo test && cargo clippy --all-targets -- -D warnings && cargo build --release`. After opening the GUI on real hardware, test live target BIOS/desktop video, fullscreen/exit, stop/start, HDMI reconnect, window close/reopen, and USB input switching and return. Measure latency/CPU and negotiated formats on the target machine rather than promising a particular frame rate. The pipeline favors fresh frames by using a two-buffer leaky queue and `sync=false`.
 
 ## Limitations
 
@@ -47,4 +49,4 @@ No audio, recording, automatic hot-plug launch, firmware controls, remote/IP KVM
 
 ## Verified hardware (partial)
 
-On the implementation host, DMI reported vendor GPD and product `G1621-02` with a Wayland/Hyprland session. `v4l2-ctl --list-devices` listed an `HDMI Capture: HDMI Capture` UVC device at `/dev/video2` plus a metadata node at `/dev/video3`. `/dev/video2` advertised YUYV 1920×1080 at 30 or 60 fps, and a 10-buffer GStreamer V4L2-to-fakesink capture completed without an error. `cargo run` opened a GUI process without immediate startup errors. These checks do NOT establish that a target was connected, its image rendered in this app, the actual delivered fps/latency, or the USB forwarding and touchscreen behavior. Those manual checks remain open.
+On the implementation host, DMI reported vendor GPD and product `G1621-02` with a Wayland/Hyprland session. `v4l2-ctl --list-devices` listed an `HDMI Capture: HDMI Capture` UVC device at `/dev/video2` plus a metadata node at `/dev/video3`. `/dev/video2` advertised YUYV 1920×1080 at 30 or 60 fps, and a 10-buffer GStreamer V4L2-to-fakesink capture completed without an error. The native viewer opened with `--device /dev/video2`; GStreamer negotiated YUY2 1920×1080 60/1 and its GTK4 sink created frames repeatedly over several seconds. This establishes that capture frames reached the sink, not their visible content, measured display latency, or USB forwarding/touchscreen behavior. Those manual checks remain open.

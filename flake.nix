@@ -8,7 +8,7 @@
     in {
       devShells = forSystems (pkgs: {
         default = pkgs.mkShell {
-          nativeBuildInputs = with pkgs; [ cargo rustc rustfmt pkg-config ];
+          nativeBuildInputs = with pkgs; [ cargo rustc rustfmt clippy pkg-config ];
           buildInputs = with pkgs; [
             gtk4
             gst_all_1.gstreamer

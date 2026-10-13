@@ -7,6 +7,14 @@ pub fn pipeline_description(path: &str) -> String {
     format!("v4l2src device={path} ! queue max-size-buffers=2 leaky=downstream ! videoconvert ! gtk4paintablesink name=display sync=false")
 }
 
+pub fn parse_args(args: &[String]) -> Result<Option<String>, &'static str> {
+    match args {
+        [_] => Ok(None),
+        [_, flag, device] if flag == "--device" && valid_device(device) => Ok(Some(device.clone())),
+        _ => Err("Usage: gpd-pocket3-kvm [--device /dev/videoN]"),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -24,5 +32,17 @@ mod tests {
         assert!(!valid_device("/dev/video2 ! fakesink"));
         assert!(!valid_device("/tmp/video2"));
         assert!(valid_device("/dev/video23"));
+    }
+
+    #[test]
+    fn accepts_optional_explicit_device_only() {
+        assert_eq!(parse_args(&["app".into()]).unwrap(), None);
+        assert_eq!(
+            parse_args(&["app".into(), "--device".into(), "/dev/video2".into()]).unwrap(),
+            Some("/dev/video2".to_string())
+        );
+        assert!(parse_args(&["app".into(), "--device".into(), "/tmp/video2".into()]).is_err());
+        assert!(parse_args(&["app".into(), "--device".into()]).is_err());
+        assert!(parse_args(&["app".into(), "--unknown".into()]).is_err());
     }
 }

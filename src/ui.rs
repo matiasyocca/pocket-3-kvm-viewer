@@ -40,7 +40,7 @@ fn populate(model: &gtk::StringList, dropdown: &gtk::DropDown, status: &gtk::Lab
     }
 }
 
-pub fn build(app: &gtk::Application) {
+pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     let window = gtk::ApplicationWindow::builder()
         .application(app)
         .title("Pocket 3 KVM")
@@ -130,6 +130,7 @@ pub fn build(app: &gtk::Application) {
             let watch = match pipeline.bus().expect("pipeline has a bus").add_watch_local(
                 move |_, message| {
                     if let gst::MessageView::Error(err) = message.view() {
+                        eprintln!("Capture error: {} ({:?})", err.error(), err.debug());
                         status_for_bus.set_text(&format!("Capture error: {}", err.error()));
                     }
                     glib::ControlFlow::Continue
@@ -147,6 +148,7 @@ pub fn build(app: &gtk::Application) {
                 return;
             }
             *active.borrow_mut() = Some(Running { pipeline, watch });
+            eprintln!("Started capture from {path}");
             status.set_text(&format!(
                 "Capturing {path}; USB input forwarding is hardware-controlled."
             ));
@@ -160,4 +162,16 @@ pub fn build(app: &gtk::Application) {
         });
     }
     window.present();
+    if let Some(device) = initial_device {
+        if let Some(index) =
+            (0..model.n_items()).find(|&index| model.string(index).as_deref() == Some(device))
+        {
+            dropdown.set_selected(index);
+            start.emit_clicked();
+        } else {
+            status.set_text(&format!(
+                "Video node {device} is not present. Refresh devices."
+            ));
+        }
+    }
 }
