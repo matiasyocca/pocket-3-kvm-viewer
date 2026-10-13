@@ -20,6 +20,10 @@ fn should_inhibit(capture_active: bool, window_focused: bool) -> bool {
     capture_active && window_focused
 }
 
+fn is_double_click(n_press: i32) -> bool {
+    n_press == 2
+}
+
 struct InhibitController {
     window: glib::WeakRef<gtk::ApplicationWindow>,
     state: RefCell<(bool, Option<crate::inhibit::SleepInhibitor>)>,
@@ -230,6 +234,17 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
             }
         });
     }
+    let double_click = gtk::GestureClick::new();
+    double_click.set_button(1); // Primary mouse/touchpad button only.
+    {
+        let fullscreen = fullscreen.clone();
+        double_click.connect_pressed(move |_, n_press, _, _| {
+            if is_double_click(n_press) {
+                fullscreen.emit_clicked();
+            }
+        });
+    }
+    picture.add_controller(double_click);
     {
         let (active, picture, button, inhibitor) = (
             active.clone(),
@@ -248,7 +263,14 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
 
 #[cfg(test)]
 mod tests {
-    use super::should_inhibit;
+    use super::{is_double_click, should_inhibit};
+
+    #[test]
+    fn toggles_only_on_second_click() {
+        assert!(!is_double_click(1));
+        assert!(is_double_click(2));
+        assert!(!is_double_click(3));
+    }
 
     #[test]
     fn inhibits_only_while_capture_is_active_and_window_is_focused() {
