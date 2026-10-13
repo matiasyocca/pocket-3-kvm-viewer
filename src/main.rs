@@ -1,5 +1,6 @@
 mod capture;
 mod device;
+mod inhibit;
 mod ui;
 
 use gstreamer as gst;

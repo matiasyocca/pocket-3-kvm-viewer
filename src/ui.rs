@@ -16,12 +16,61 @@ struct Running {
 type ActiveCapture = Rc<RefCell<Option<Running>>>;
 static INSTALL_STYLE: Once = Once::new();
 
+fn should_inhibit(capture_active: bool, window_focused: bool) -> bool {
+    capture_active && window_focused
+}
+
+struct InhibitController {
+    window: glib::WeakRef<gtk::ApplicationWindow>,
+    state: RefCell<(bool, Option<crate::inhibit::SleepInhibitor>)>,
+}
+
+impl InhibitController {
+    fn new(window: &gtk::ApplicationWindow) -> Self {
+        Self {
+            window: window.downgrade(),
+            state: RefCell::new((false, None)),
+        }
+    }
+
+    fn set_capture_active(&self, active: bool) {
+        self.state.borrow_mut().0 = active;
+        self.update();
+    }
+
+    fn update(&self) {
+        let Some(window) = self.window.upgrade() else {
+            return;
+        };
+        let mut state = self.state.borrow_mut();
+        if should_inhibit(state.0, window.is_active()) {
+            if state.1.is_none() {
+                match crate::inhibit::SleepInhibitor::acquire() {
+                    Ok(lock) => {
+                        state.1 = Some(lock);
+                        eprintln!("Sleep/idle inhibition active");
+                    }
+                    Err(err) => eprintln!("Could not inhibit sleep/idle: {err}"),
+                }
+            }
+        } else if state.1.take().is_some() {
+            eprintln!("Sleep/idle inhibition released");
+        }
+    }
+}
+
 fn notice(label: &gtk::Label, message: &str) {
     label.set_text(message);
     label.set_visible(true);
 }
 
-fn stop(active: &ActiveCapture, picture: &gtk::Picture, button: &gtk::Button) {
+fn stop(
+    active: &ActiveCapture,
+    picture: &gtk::Picture,
+    button: &gtk::Button,
+    inhibitor: &InhibitController,
+) {
+    inhibitor.set_capture_active(false);
     if let Some(running) = active.borrow_mut().take() {
         drop(running.watch);
         if let Err(err) = running.pipeline.set_state(gst::State::Null) {
@@ -38,6 +87,7 @@ fn start_capture(
     picture: &gtk::Picture,
     message: &gtk::Label,
     button: &gtk::Button,
+    inhibitor: &Rc<InhibitController>,
 ) -> Result<(), String> {
     let path = path.to_string_lossy();
     if !capture::valid_device(&path) {
@@ -54,12 +104,14 @@ fn start_capture(
     let paintable = sink.property::<gtk::gdk::Paintable>("paintable");
     picture.set_paintable(Some(&paintable));
     let error_label = message.clone();
+    let error_inhibitor = inhibitor.clone();
     let watch = pipeline
         .bus()
         .expect("pipeline has a bus")
         .add_watch_local(move |_, event| {
             if let gst::MessageView::Error(err) = event.view() {
                 eprintln!("Capture error: {} ({:?})", err.error(), err.debug());
+                error_inhibitor.set_capture_active(false);
                 notice(&error_label, &format!("Capture error: {}", err.error()));
             }
             glib::ControlFlow::Continue
@@ -71,6 +123,7 @@ fn start_capture(
         return Err(format!("Cannot start capture: {err}"));
     }
     *active.borrow_mut() = Some(Running { pipeline, watch });
+    inhibitor.set_capture_active(true);
     message.set_visible(false);
     button.set_label("Stop");
     eprintln!("Started capture from {path}");
@@ -124,18 +177,25 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     window.set_child(Some(&overlay));
 
     let active: ActiveCapture = Rc::new(RefCell::new(None));
+    let inhibitor = Rc::new(InhibitController::new(&window));
     let explicit = initial_device.map(str::to_owned);
 
     {
-        let (active, picture, message, button) = (
+        let inhibitor = inhibitor.clone();
+        window.connect_notify_local(Some("is-active"), move |_, _| inhibitor.update());
+    }
+
+    {
+        let (active, picture, message, button, inhibitor) = (
             active.clone(),
             picture.clone(),
             message.clone(),
             start.clone(),
+            inhibitor.clone(),
         );
         start.connect_clicked(move |_| {
             if active.borrow().is_some() {
-                stop(&active, &picture, &button);
+                stop(&active, &picture, &button, &inhibitor);
                 notice(&message, "Stopped. Tap Start to resume.");
             } else {
                 match device::resolve_capture_node(
@@ -144,7 +204,8 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
                     explicit.as_deref(),
                 ) {
                     Ok(path) => {
-                        if let Err(err) = start_capture(&path, &active, &picture, &message, &button)
+                        if let Err(err) =
+                            start_capture(&path, &active, &picture, &message, &button, &inhibitor)
                         {
                             notice(&message, &err);
                         }
@@ -170,12 +231,30 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
         });
     }
     {
-        let (active, picture, button) = (active.clone(), picture.clone(), start.clone());
+        let (active, picture, button, inhibitor) = (
+            active.clone(),
+            picture.clone(),
+            start.clone(),
+            inhibitor.clone(),
+        );
         window.connect_close_request(move |_| {
-            stop(&active, &picture, &button);
+            stop(&active, &picture, &button, &inhibitor);
             glib::Propagation::Proceed
         });
     }
     window.present();
     start.emit_clicked();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_inhibit;
+
+    #[test]
+    fn inhibits_only_while_capture_is_active_and_window_is_focused() {
+        assert!(!should_inhibit(false, false));
+        assert!(!should_inhibit(false, true));
+        assert!(!should_inhibit(true, false));
+        assert!(should_inhibit(true, true));
+    }
 }
