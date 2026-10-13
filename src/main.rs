@@ -1,3 +1,4 @@
+mod capture;
 mod device;
 
 fn main() {
