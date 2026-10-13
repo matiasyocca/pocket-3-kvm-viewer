@@ -159,6 +159,11 @@ fn stop(
     button: &gtk::Button,
     inhibitor: &InhibitController,
 ) {
+    retire_capture(active, picture, inhibitor);
+    button.set_label("Start");
+}
+
+fn retire_capture(active: &ActiveCapture, picture: &gtk::Picture, inhibitor: &InhibitController) {
     inhibitor.set_capture_active(false);
     if let Some(running) = active.borrow_mut().take() {
         drop(running.watch);
@@ -167,7 +172,6 @@ fn stop(
         }
     }
     picture.set_paintable(None::<&gtk::gdk::Paintable>);
-    button.set_label("Start");
 }
 
 fn start_capture(
@@ -178,7 +182,7 @@ fn start_capture(
     button: &gtk::Button,
     inhibitor: &Rc<InhibitController>,
 ) -> Result<(), String> {
-    let capture_path = path.to_path_buf();
+    let capture_path = path;
     let path = path.to_string_lossy();
     if !capture::valid_device(&path) {
         return Err("Invalid video device path.".to_owned());
@@ -195,34 +199,89 @@ fn start_capture(
         .ok_or_else(|| "GTK4 video sink unavailable.".to_owned())?;
     let paintable = sink.property::<gtk::gdk::Paintable>("paintable");
     picture.set_paintable(Some(&paintable));
+    start_pipeline(
+        capture_path,
+        pipeline,
+        active,
+        picture,
+        message,
+        button,
+        inhibitor,
+    )
+}
+
+// Keep pipeline lifecycle independent of the hardware source and GTK video sink.
+fn start_pipeline(
+    path: &Path,
+    pipeline: gst::Pipeline,
+    active: &ActiveCapture,
+    picture: &gtk::Picture,
+    message: &gtk::Label,
+    button: &gtk::Button,
+    inhibitor: &Rc<InhibitController>,
+) -> Result<(), String> {
     let error_label = message.clone();
     let error_inhibitor = inhibitor.clone();
+    let error_active = Rc::downgrade(active);
+    let error_picture = picture.clone();
+    let error_button = button.downgrade();
     let watch = pipeline
         .bus()
         .expect("pipeline has a bus")
-        .add_watch_local(move |_, event| {
+        .add_watch_local(move |bus, event| {
             if let gst::MessageView::Error(err) = event.view() {
+                let Some(active) = error_active.upgrade() else {
+                    return glib::ControlFlow::Continue;
+                };
+                if active
+                    .borrow()
+                    .as_ref()
+                    .is_none_or(|running| running.pipeline.bus().as_ref() != Some(bus))
+                {
+                    return glib::ControlFlow::Continue;
+                }
                 eprintln!("Capture error: {} ({:?})", err.error(), err.debug());
-                error_inhibitor.set_capture_active(false);
                 notice(&error_label, &format!("Capture error: {}", err.error()));
+                let (active, picture, button, inhibitor, bus) = (
+                    error_active.clone(),
+                    error_picture.clone(),
+                    error_button.clone(),
+                    error_inhibitor.clone(),
+                    bus.clone(),
+                );
+                // Removing this watch during its own dispatch would drop the callback.
+                glib::idle_add_local_once(move || {
+                    if let Some(active) = active.upgrade() {
+                        let current = active
+                            .borrow()
+                            .as_ref()
+                            .is_some_and(|running| running.pipeline.bus().as_ref() == Some(&bus));
+                        // Start/Stop may have replaced the capture before this idle ran.
+                        if current {
+                            retire_capture(&active, &picture, &inhibitor);
+                            if let Some(button) = button.upgrade() {
+                                button.set_label("Start");
+                            }
+                        }
+                    }
+                });
             }
             glib::ControlFlow::Continue
         })
         .map_err(|err| format!("Cannot watch capture: {err}"))?;
-    if let Err(err) = pipeline.set_state(gst::State::Playing) {
-        drop(watch);
-        picture.set_paintable(None::<&gtk::gdk::Paintable>);
-        return Err(format!("Cannot start capture: {err}"));
-    }
     *active.borrow_mut() = Some(Running {
-        path: capture_path,
-        pipeline,
+        path: path.to_path_buf(),
+        pipeline: pipeline.clone(),
         watch,
     });
+    if let Err(err) = pipeline.set_state(gst::State::Playing) {
+        stop(active, picture, button, inhibitor);
+        return Err(format!("Cannot start capture: {err}"));
+    }
     inhibitor.set_capture_active(true);
     message.set_visible(false);
     button.set_label("Stop");
-    eprintln!("Started capture from {path}");
+    eprintln!("Started capture from {}", path.display());
     Ok(())
 }
 
@@ -512,10 +571,352 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        cursor_name_for_controls, is_double_click, is_video_node, removed_running_node,
-        reveals_controls, should_autostart, should_inhibit, CapturePreference,
-    };
+    use super::*;
+
+    struct PipelineUi {
+        active: ActiveCapture,
+        picture: gtk::Picture,
+        message: gtk::Label,
+        button: gtk::Button,
+        inhibitor: Rc<InhibitController>,
+        _window: gtk::ApplicationWindow,
+    }
+
+    impl PipelineUi {
+        fn new() -> Self {
+            gst::init().unwrap();
+            let window = gtk::ApplicationWindow::builder().build();
+            Self {
+                active: Rc::new(RefCell::new(None)),
+                picture: gtk::Picture::new(),
+                message: gtk::Label::new(None),
+                button: gtk::Button::with_label("Start"),
+                inhibitor: Rc::new(InhibitController::new(&window)),
+                _window: window,
+            }
+        }
+
+        fn start(&self, pipeline: &gst::Pipeline) -> Result<(), String> {
+            let paintable = gtk::gdk::MemoryTexture::new(
+                1,
+                1,
+                gtk::gdk::MemoryFormat::R8g8b8a8,
+                &glib::Bytes::from_static(&[0, 0, 0, 255]),
+                4,
+            );
+            self.picture.set_paintable(Some(&paintable));
+            start_pipeline(
+                Path::new("/etc/hosts"),
+                pipeline.clone(),
+                &self.active,
+                &self.picture,
+                &self.message,
+                &self.button,
+                &self.inhibitor,
+            )
+        }
+    }
+
+    impl Drop for PipelineUi {
+        fn drop(&mut self) {
+            stop(&self.active, &self.picture, &self.button, &self.inhibitor);
+        }
+    }
+
+    fn test_pipeline(description: &str) -> gst::Pipeline {
+        gst::parse::launch(description)
+            .unwrap()
+            .dynamic_cast::<gst::Pipeline>()
+            .unwrap()
+    }
+
+    fn hosts_fds() -> usize {
+        let hosts = std::fs::canonicalize("/etc/hosts").unwrap();
+        std::fs::read_dir("/proc/self/fd")
+            .unwrap()
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                std::fs::read_link(entry.path()).ok().as_deref() == Some(hosts.as_path())
+            })
+            .count()
+    }
+
+    fn dispatch_until(mut done: impl FnMut() -> bool) {
+        let context = glib::MainContext::default();
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while !done() && std::time::Instant::now() < deadline {
+            context.iteration(false);
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(
+            done(),
+            "pipeline callback did not arrive before the deadline"
+        );
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_callbacks_do_not_retain_start_button_or_capture() {
+        gtk::test_synced(|| {
+            gst::init().unwrap();
+            let mut retained = Vec::new();
+            for error_dispatched in [false, true] {
+                let window = gtk::ApplicationWindow::builder().build();
+                let active: ActiveCapture = Rc::new(RefCell::new(None));
+                let picture = gtk::Picture::new();
+                let message = gtk::Label::new(None);
+                let button = gtk::Button::with_label("Start");
+                let inhibitor = Rc::new(InhibitController::new(&window));
+                let pipeline = test_pipeline(if error_dispatched {
+                    "filesrc location=/etc/hosts ! identity error-after=1 ! fakesink async=false sync=false"
+                } else {
+                    "filesrc location=/etc/hosts ! fakesink async=false sync=false"
+                });
+                let weak_active = Rc::downgrade(&active);
+                let weak_button = button.downgrade();
+                {
+                    let (active, picture, message, inhibitor, pipeline) = (
+                        active.clone(),
+                        picture.clone(),
+                        message.clone(),
+                        inhibitor.clone(),
+                        pipeline.clone(),
+                    );
+                    // Model Start's strong state ownership, without its separate
+                    // pre-existing button self-capture cycle: use the signal argument.
+                    button.connect_clicked(move |button| {
+                        if active.borrow().is_some() {
+                            stop(&active, &picture, button, &inhibitor);
+                        } else {
+                            start_pipeline(
+                                Path::new("/etc/hosts"),
+                                pipeline.clone(),
+                                &active,
+                                &picture,
+                                &message,
+                                button,
+                                &inhibitor,
+                            )
+                            .unwrap();
+                        }
+                    });
+                }
+                button.emit_clicked();
+                if error_dispatched {
+                    dispatch_until(|| message.text().starts_with("Capture error:"));
+                    assert!(active.borrow().is_some(), "retirement must still be queued");
+                }
+                drop(button);
+                drop(active);
+                let button_retained = weak_button.upgrade().is_some();
+                let active_retained = weak_active.upgrade().is_some();
+                eprintln!(
+                    "error dispatched={error_dispatched}: button retained={button_retained}, capture retained={active_retained}"
+                );
+                retained.push((error_dispatched, button_retained, active_retained));
+                // Observe actual lifetime before breaking the cycle on RED.
+                if let (Some(active), Some(button)) = (weak_active.upgrade(), weak_button.upgrade())
+                {
+                    stop(&active, &picture, &button, &inhibitor);
+                }
+                pipeline.set_state(gst::State::Null).unwrap();
+                let dispatched = Rc::new(Cell::new(false));
+                let done = dispatched.clone();
+                glib::idle_add_local_once(move || done.set(true));
+                dispatch_until(|| dispatched.get());
+            }
+            assert_eq!(
+                retained,
+                vec![(false, false, false), (true, false, false)],
+                "neither the bus watch nor deferred retirement may retain Start and its capture state"
+            );
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_async_error_retires_resources_without_start_button() {
+        gtk::test_synced(|| {
+            gst::init().unwrap();
+            let window = gtk::ApplicationWindow::builder().build();
+            let active: ActiveCapture = Rc::new(RefCell::new(None));
+            let picture = gtk::Picture::new();
+            let message = gtk::Label::new(None);
+            let button = gtk::Button::with_label("Start");
+            let weak_button = button.downgrade();
+            let inhibitor = Rc::new(InhibitController::new(&window));
+            let paintable = gtk::gdk::MemoryTexture::new(
+                1,
+                1,
+                gtk::gdk::MemoryFormat::R8g8b8a8,
+                &glib::Bytes::from_static(&[0, 0, 0, 255]),
+                4,
+            );
+            picture.set_paintable(Some(&paintable));
+            let before = hosts_fds();
+            let pipeline = test_pipeline(
+                "filesrc location=/etc/hosts ! identity error-after=1 ! fakesink async=false sync=false",
+            );
+            start_pipeline(
+                Path::new("/etc/hosts"),
+                pipeline.clone(),
+                &active,
+                &picture,
+                &message,
+                &button,
+                &inhibitor,
+            )
+            .unwrap();
+            assert_eq!(hosts_fds(), before + 1, "filesrc must really hold its FD");
+            dispatch_until(|| message.text().starts_with("Capture error:"));
+            assert!(active.borrow().is_some(), "retirement must still be queued");
+            drop(button);
+            let button_retained = weak_button.upgrade().is_some();
+            let dispatched = Rc::new(Cell::new(false));
+            let done = dispatched.clone();
+            glib::idle_add_local_once(move || done.set(true));
+            dispatch_until(|| dispatched.get());
+            let current = pipeline.current_state();
+            let retained_fds = hosts_fds() - before;
+            // Inspect cleanup before ensuring the fixture is harmless even on RED.
+            pipeline.set_state(gst::State::Null).unwrap();
+            assert!(
+                !button_retained,
+                "Start must be gone before retirement runs"
+            );
+            assert!(
+                active.borrow().is_none(),
+                "retirement must not require Start"
+            );
+            assert_eq!(current, gst::State::Null);
+            assert_eq!(retained_fds, 0);
+            assert!(picture.paintable().is_none());
+            assert!(!inhibitor.state.borrow().0);
+            assert!(message.is_visible());
+            assert!(pipeline
+                .bus()
+                .unwrap()
+                .add_watch_local(|_, _| glib::ControlFlow::Continue)
+                .is_ok());
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_async_error_retires_resources() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let before = hosts_fds();
+            let pipeline = test_pipeline(
+                "filesrc location=/etc/hosts ! identity error-after=1 ! fakesink async=false sync=false",
+            );
+            ui.start(&pipeline).unwrap();
+            assert_eq!(hosts_fds(), before + 1, "filesrc must really hold its FD");
+            dispatch_until(|| ui.message.text().starts_with("Capture error:"));
+            // Allow a deferred retirement to run after the real bus callback returned.
+            dispatch_until(|| {
+                ui.active.borrow().is_none() || !glib::MainContext::default().pending()
+            });
+            let current = pipeline.current_state();
+            let retained_fds = hosts_fds() - before;
+            eprintln!("async error: state={current:?}, retained source FDs={retained_fds}");
+            assert!(
+                ui.active.borrow().is_none(),
+                "failed capture must leave Running"
+            );
+            assert_eq!(current, gst::State::Null);
+            assert_eq!(retained_fds, 0);
+            assert!(ui.picture.paintable().is_none());
+            assert_eq!(ui.button.label().as_deref(), Some("Start"));
+            assert!(!ui.inhibitor.state.borrow().0);
+            assert!(ui.message.is_visible());
+            assert!(pipeline
+                .bus()
+                .unwrap()
+                .add_watch_local(|_, _| glib::ControlFlow::Continue)
+                .is_ok());
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_start_failure_retires_resources() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let before = hosts_fds();
+            let pipeline = test_pipeline(
+                "filesrc location=/etc/hosts ! fakesink async=false sync=false state-error=paused-to-playing",
+            );
+            let error = ui.start(&pipeline).unwrap_err();
+            let current = pipeline.current_state();
+            let retained_fds = hosts_fds() - before;
+            // Clean up even on RED; inspect the result before the test's own teardown.
+            pipeline.set_state(gst::State::Null).unwrap();
+            eprintln!("start failure: state={current:?}, retained source FDs={retained_fds}");
+            assert!(error.starts_with("Cannot start capture:"));
+            assert_eq!(
+                current,
+                gst::State::Null,
+                "failed start must retire its partial graph"
+            );
+            assert_eq!(retained_fds, 0);
+            assert!(ui.active.borrow().is_none());
+            assert!(ui.picture.paintable().is_none());
+            assert_eq!(ui.button.label().as_deref(), Some("Start"));
+            assert!(!ui.inhibitor.state.borrow().0);
+            assert!(pipeline
+                .bus()
+                .unwrap()
+                .add_watch_local(|_, _| glib::ControlFlow::Continue)
+                .is_ok());
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_stale_error_cannot_stop_restarted_capture() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let before = hosts_fds();
+            let failed = test_pipeline(
+                "filesrc location=/etc/hosts ! identity error-after=1 ! fakesink async=false sync=false",
+            );
+            ui.start(&failed).unwrap();
+            dispatch_until(|| ui.message.text().starts_with("Capture error:"));
+            assert!(
+                ui.active.borrow().is_some(),
+                "retirement must be deferred outside the bus callback"
+            );
+            assert_eq!(
+                Rc::strong_count(&ui.active),
+                1,
+                "the watch must not own ActiveCapture"
+            );
+            stop(&ui.active, &ui.picture, &ui.button, &ui.inhibitor);
+            let replacement =
+                test_pipeline("filesrc location=/etc/hosts ! fakesink async=false sync=false");
+            ui.start(&replacement).unwrap();
+            let paintable = ui.picture.paintable().unwrap();
+            let dispatched = Rc::new(Cell::new(false));
+            let done = dispatched.clone();
+            glib::idle_add_local_once(move || done.set(true));
+            dispatch_until(|| dispatched.get());
+            assert!(
+                ui.active
+                    .borrow()
+                    .as_ref()
+                    .is_some_and(|running| running.pipeline == replacement),
+                "an old error's deferred cleanup must not retire the replacement",
+            );
+            assert_eq!(failed.current_state(), gst::State::Null);
+            assert_eq!(replacement.current_state(), gst::State::Playing);
+            assert_eq!(hosts_fds(), before + 1);
+            assert_eq!(ui.picture.paintable(), Some(paintable));
+            assert_eq!(ui.button.label().as_deref(), Some("Stop"));
+            assert!(ui.inhibitor.state.borrow().0);
+            assert!(!ui.message.is_visible());
+        });
+    }
 
     #[test]
     #[ignore = "requires an interactive GTK display"]

@@ -46,6 +46,12 @@ Status: accepted after independent review, exact packaged-build verification, th
 
 `performance/transport-verdict.json` excludes the affected runs from efficiency comparisons. Their low CPU is a failed/no-frame path, not a performance improvement. No I/O-mode change is accepted from this dataset. Further transport testing must confirm live frames and avoid rapid reopen loops.
 
+## Failed-pipeline cleanup (candidate 4)
+
+Hardware-free synthetic source tests independently reproduced the baseline failure: one source file descriptor remained open and the pipeline remained Playing after an asynchronous error, or Paused after a failed Playing transition. The corrected lifecycle retires both to Null with zero retained source FDs, removes the watch outside its own callback, and leaves a replacement capture untouched by stale errors. Extra lifetime tests cover a Start-equivalent signal handler and a missing Start widget; watch/idle callbacks no longer retain that widget or capture state.
+
+The integrated real-capture check at unchanged 1080p60 measured 21.065% visible, 1.533% hidden, and 21.132% returned CPU per core, with median sink delivery 59.994 FPS and no capture errors. These are consistent with the native-YUV baseline; no healthy-stream CPU saving is attributed to error cleanup. Its demonstrated net benefit is prompt release of failed-pipeline resources. Evidence is in `performance/resource-cleanup.json` and the `native-error-cleanup` raw samples. Final safety re-review passed; this resource-retirement fix is accepted without claiming a healthy-stream CPU improvement.
+
 ## Remaining candidate decisions
 
 Candidate 1 (visibility-driven suspension), 3 (GL), 4 (error cleanup), and the remaining lower-ranked candidates are still being evaluated. No unmeasured fix has been declared a net improvement. Quality-reducing source FPS/resolution changes will not silently replace the default stream; unsupported/ineffective candidates are to be recorded and dropped.

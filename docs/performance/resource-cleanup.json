@@ -1,0 +1,47 @@
+{
+  "candidate": 4,
+  "metric": "retained source-specific file descriptors after failure",
+  "fixture": "filesrc location=/etc/hosts; synthetic identity error and fakesink transition failure; no capture device or presented window",
+  "before": {
+    "async_error": {
+      "pipeline_state": "Playing",
+      "retained_source_fds": 1
+    },
+    "startup_failure": {
+      "pipeline_state": "Paused",
+      "retained_source_fds": 1
+    },
+    "tests_passed": 1,
+    "tests_failed": 2
+  },
+  "after": {
+    "async_error": {
+      "pipeline_state": "Null",
+      "retained_source_fds": 0
+    },
+    "startup_failure": {
+      "pipeline_state": "Null",
+      "retained_source_fds": 0
+    },
+    "tests_passed": 3,
+    "tests_failed": 0,
+    "stale_error_replacement": "remains Playing with source FD and paintable intact"
+  },
+  "verification": "Parent independently reconstructed the baseline start/error behavior in the lifecycle test seam, observed two failures, restored the proposed fix, and reran all three display-backed tests successfully.",
+  "scope": "Resource retirement benefit is demonstrated. No healthy-stream CPU improvement or real-device error power benefit is claimed.",
+  "status": "accepted: independently reviewed, parent-integrated, five lifecycle regressions and live-capture nonregression verified",
+  "healthy_capture_after": {
+    "cpu_one_core_pct_medians": {
+      "visible": 21.065264425041814,
+      "hidden": 1.5332461941490774,
+      "returned": 21.13183473826351
+    },
+    "median_sink_fps_after_acquisition": 59.9935,
+    "capture_error_lines": []
+  },
+  "ownership_fix": {
+    "watch_and_idle_start_button_retained": false,
+    "capture_state_retained_via_start_handler": false,
+    "cleanup_when_button_gone": "pipeline Null, retained source FD zero; parent verified five ignored fixtures"
+  }
+}
