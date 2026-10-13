@@ -55,13 +55,12 @@ pub fn list_kvm_nodes(dev_dir: &Path, sys_video_dir: &Path) -> io::Result<Vec<Pa
         .collect())
 }
 
-pub fn preferred_index(nodes: &[PathBuf], wanted: Option<&str>) -> Option<u32> {
-    match wanted {
-        Some(path) => nodes.iter().position(|node| node == Path::new(path)),
-        None if nodes.len() == 1 => Some(0),
-        None => None,
+pub fn choose_kvm_node(nodes: &[PathBuf]) -> Result<PathBuf, &'static str> {
+    match nodes {
+        [] => Err("No KVM capture device found. Attach the module and tap Refresh."),
+        [node] => Ok(node.clone()),
+        _ => Err("Multiple KVM capture devices found. Use --device /dev/videoN."),
     }
-    .and_then(|index| u32::try_from(index).ok())
 }
 
 #[cfg(test)]
@@ -131,13 +130,12 @@ mod tests {
     }
 
     #[test]
-    fn selects_unique_match_but_not_arbitrary_first_of_many() {
+    fn automatically_uses_only_a_unique_kvm_capture_node() {
         let one = vec![PathBuf::from("/dev/video2")];
         let many = vec![PathBuf::from("/dev/video2"), PathBuf::from("/dev/video4")];
-        assert_eq!(preferred_index(&one, None), Some(0));
-        assert_eq!(preferred_index(&many, None), None);
-        assert_eq!(preferred_index(&many, Some("/dev/video4")), Some(1));
-        assert_eq!(preferred_index(&many, Some("/dev/video9")), None);
+        assert_eq!(choose_kvm_node(&one), Ok(PathBuf::from("/dev/video2")));
+        assert!(choose_kvm_node(&[]).unwrap_err().contains("No KVM"));
+        assert!(choose_kvm_node(&many).unwrap_err().contains("Multiple"));
     }
 
     #[test]
