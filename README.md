@@ -37,6 +37,12 @@ On GTK 4.20 or newer, use `cargo run --release --features native-yuv`. This enab
 
 The optional `benchmark` feature adds frame-delivery/caps diagnostics to stderr; it is not enabled in normal builds or the Nix package. Reproducible CPU/RSS comparisons use `scripts/benchmark.py`; measurements and limitations are in `docs/PERFORMANCE.md`. Sink-delivery FPS is not the same as measured panel presentation rate or total power consumption.
 
+## Visibility-driven capture suspension
+
+On GTK 4.12 or newer, `cargo run --release --features background-throttle` pauses capture when the compositor reports the window suspended/minimized or GTK unmaps it. Combine both optimizations on GTK 4.20+: `cargo run --release --features native-yuv,background-throttle`. The Nix package enables both features. Ordinary Cargo builds keep the GTK 4.10-compatible behavior.
+
+The controller is event-driven: losing focus or leaving the pointer stationary does not pause visible video. Showing the window resumes the same pipeline; manual Stop remains stopped until Start. A compositor that does not report occlusion will not gain automatic occlusion-based suspension. Paused capture retains its video node and last image for quick return; Stop releases the node. Sleep inhibition requires focused, actually Playing capture, not merely an allocated paused pipeline.
+
 ## Nix package and NixOS
 
 `nix build .#pocket3-kvm-viewer` builds the installable package (also available as `.#default`); `nix run .` launches it. The package installs the `pocket3-kvm-viewer` command and a desktop entry named “Pocket 3 KVM Viewer”. GTK and the necessary GStreamer runtime plugins are wrapped into the Nix package.

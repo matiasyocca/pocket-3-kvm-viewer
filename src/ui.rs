@@ -17,6 +17,7 @@ use crate::{capture, device};
 struct Running {
     path: PathBuf,
     pipeline: gst::Pipeline,
+    requested_state: Cell<gst::State>,
     watch: gst::bus::BusWatchGuard,
 }
 
@@ -27,6 +28,25 @@ static INSTALL_STYLE: Once = Once::new();
 enum CapturePreference {
     Automatic,
     Paused,
+}
+
+#[cfg(feature = "background-throttle")]
+fn capture_target_state(
+    preference: CapturePreference,
+    mapped: bool,
+    state: gtk::gdk::ToplevelState,
+) -> Option<gst::State> {
+    if preference == CapturePreference::Paused {
+        return None;
+    }
+    let hidden = !mapped
+        || state
+            .intersects(gtk::gdk::ToplevelState::SUSPENDED | gtk::gdk::ToplevelState::MINIMIZED);
+    Some(if hidden {
+        gst::State::Paused
+    } else {
+        gst::State::Playing
+    })
 }
 
 fn should_autostart(preference: CapturePreference, active: bool) -> bool {
@@ -174,6 +194,186 @@ fn retire_capture(active: &ActiveCapture, picture: &gtk::Picture, inhibitor: &In
     picture.set_paintable(None::<&gtk::gdk::Paintable>);
 }
 
+// Track the requested state as well as actual state: async transitions must not
+// be reissued on duplicate visibility notifications.
+fn request_pipeline_state(
+    running: &Running,
+    target: gst::State,
+    inhibitor: &InhibitController,
+) -> Result<bool, String> {
+    if running.requested_state.get() == target {
+        return Ok(false);
+    }
+    running.requested_state.set(target);
+    if target != gst::State::Playing {
+        inhibitor.set_capture_active(false);
+    }
+    running
+        .pipeline
+        .set_state(target)
+        .map_err(|err| format!("Cannot change capture state: {err}"))?;
+    inhibitor.set_capture_active(
+        target == gst::State::Playing && running.pipeline.current_state() == gst::State::Playing,
+    );
+    Ok(true)
+}
+
+#[cfg(feature = "background-throttle")]
+fn toplevel_state(window: &gtk::ApplicationWindow) -> gtk::gdk::ToplevelState {
+    window
+        .surface()
+        .and_then(|surface| surface.dynamic_cast::<gtk::gdk::Toplevel>().ok())
+        .map_or(gtk::gdk::ToplevelState::empty(), |toplevel| {
+            toplevel.state()
+        })
+}
+
+#[cfg(feature = "background-throttle")]
+fn capture_state_for_window(window: &gtk::ApplicationWindow) -> gst::State {
+    capture_target_state(
+        CapturePreference::Automatic,
+        window.is_mapped(),
+        toplevel_state(window),
+    )
+    .unwrap()
+}
+
+#[cfg(feature = "background-throttle")]
+fn sync_capture_visibility(
+    active: &ActiveCapture,
+    preference: CapturePreference,
+    mapped: bool,
+    state: gtk::gdk::ToplevelState,
+    widgets: (
+        &gtk::Picture,
+        &gtk::Label,
+        Option<&gtk::Button>,
+        &Rc<InhibitController>,
+    ),
+) -> Result<bool, String> {
+    let Some(target) = capture_target_state(preference, mapped, state) else {
+        return Ok(false);
+    };
+    let (picture, message, button, inhibitor) = widgets;
+    let result = active.borrow().as_ref().map_or(Ok(false), |running| {
+        request_pipeline_state(running, target, inhibitor)
+    });
+    if let Err(err) = &result {
+        retire_capture(active, picture, inhibitor);
+        if let Some(button) = button {
+            button.set_label("Start");
+        }
+        notice(message, err);
+    }
+    result
+}
+
+#[cfg(feature = "background-throttle")]
+fn take_initial_start(
+    mapped: bool,
+    preference: CapturePreference,
+    allocated: bool,
+    started: &Cell<bool>,
+) -> bool {
+    mapped && !started.replace(true) && should_autostart(preference, allocated)
+}
+
+// Signals only: compositor suspension/minimization and GTK map/unmap. Focus and
+// pointer activity remain exclusively input/UI and inhibition concerns.
+#[cfg(feature = "background-throttle")]
+fn watch_capture_visibility(
+    window: &gtk::ApplicationWindow,
+    active: &ActiveCapture,
+    preference: &Rc<Cell<CapturePreference>>,
+    widgets: (
+        &gtk::Picture,
+        &gtk::Label,
+        &gtk::Button,
+        &Rc<InhibitController>,
+    ),
+) {
+    let (picture, message, button, inhibitor) = widgets;
+    let update = {
+        let (active, preference, picture, message, button, inhibitor) = (
+            Rc::downgrade(active),
+            preference.clone(),
+            picture.clone(),
+            message.clone(),
+            button.downgrade(),
+            inhibitor.clone(),
+        );
+        Rc::new(move |window: &gtk::ApplicationWindow, mapped: bool| {
+            if let Some(active) = active.upgrade() {
+                if let Err(err) = sync_capture_visibility(
+                    &active,
+                    preference.get(),
+                    mapped,
+                    toplevel_state(window),
+                    (&picture, &message, button.upgrade().as_ref(), &inhibitor),
+                ) {
+                    eprintln!("Capture visibility transition failed: {err}");
+                }
+            }
+        })
+    };
+    // Surface state belongs to a realization, not to the window forever.
+    let watched = Rc::new(RefCell::new(
+        None::<(gtk::gdk::Toplevel, glib::SignalHandlerId)>,
+    ));
+    {
+        let (watched, update) = (watched.clone(), update.clone());
+        window.connect_realize(move |window| {
+            if let Some((toplevel, handler)) = watched.borrow_mut().take() {
+                toplevel.disconnect(handler);
+            }
+            if let Some(toplevel) = window
+                .surface()
+                .and_then(|surface| surface.dynamic_cast::<gtk::gdk::Toplevel>().ok())
+            {
+                let weak_window = window.downgrade();
+                let update = update.clone();
+                let handler = toplevel.connect_state_notify(move |_| {
+                    if let Some(window) = weak_window.upgrade() {
+                        update(&window, window.is_mapped());
+                    }
+                });
+                *watched.borrow_mut() = Some((toplevel, handler));
+            }
+            update(window, window.is_mapped());
+        });
+    }
+    {
+        let update = update.clone();
+        window.connect_unrealize(move |window| {
+            if let Some((toplevel, handler)) = watched.borrow_mut().take() {
+                toplevel.disconnect(handler);
+            }
+            update(window, false);
+        });
+    }
+    {
+        let (update, preference, button, active) = (
+            update.clone(),
+            preference.clone(),
+            button.downgrade(),
+            Rc::downgrade(active),
+        );
+        let started = Cell::new(false);
+        window.connect_map(move |window| {
+            update(window, true);
+            let allocated = active
+                .upgrade()
+                .is_some_and(|active| active.borrow().is_some());
+            if take_initial_start(true, preference.get(), allocated, &started) {
+                if let Some(button) = button.upgrade() {
+                    button.emit_clicked();
+                }
+            }
+        });
+    }
+    window.connect_unmap(move |window| update(window, false));
+}
+
 fn start_capture(
     path: &Path,
     active: &ActiveCapture,
@@ -203,10 +403,22 @@ fn start_capture(
         capture_path,
         pipeline,
         active,
-        picture,
-        message,
-        button,
-        inhibitor,
+        (picture, message, button, inhibitor),
+        {
+            #[cfg(feature = "background-throttle")]
+            {
+                inhibitor
+                    .window
+                    .upgrade()
+                    .map_or(gst::State::Paused, |window| {
+                        capture_state_for_window(&window)
+                    })
+            }
+            #[cfg(not(feature = "background-throttle"))]
+            {
+                gst::State::Playing
+            }
+        },
     )
 }
 
@@ -215,20 +427,39 @@ fn start_pipeline(
     path: &Path,
     pipeline: gst::Pipeline,
     active: &ActiveCapture,
-    picture: &gtk::Picture,
-    message: &gtk::Label,
-    button: &gtk::Button,
-    inhibitor: &Rc<InhibitController>,
+    widgets: (
+        &gtk::Picture,
+        &gtk::Label,
+        &gtk::Button,
+        &Rc<InhibitController>,
+    ),
+    target: gst::State,
 ) -> Result<(), String> {
+    let (picture, message, button, inhibitor) = widgets;
     let error_label = message.clone();
     let error_inhibitor = inhibitor.clone();
     let error_active = Rc::downgrade(active);
     let error_picture = picture.clone();
+    // Start's signal owns ActiveCapture; the bus/idle must not own Start.
     let error_button = button.downgrade();
     let watch = pipeline
         .bus()
         .expect("pipeline has a bus")
         .add_watch_local(move |bus, event| {
+            if let gst::MessageView::StateChanged(_) = event.view() {
+                if let Some(active) = error_active.upgrade() {
+                    let current = active.borrow();
+                    if let Some(running) = current.as_ref().filter(|running| {
+                        running.pipeline.bus().as_ref() == Some(bus)
+                            && event.src() == Some(running.pipeline.upcast_ref())
+                    }) {
+                        error_inhibitor.set_capture_active(
+                            running.pipeline.current_state() == gst::State::Playing
+                                && running.requested_state.get() == gst::State::Playing,
+                        );
+                    }
+                }
+            }
             if let gst::MessageView::Error(err) = event.view() {
                 let Some(active) = error_active.upgrade() else {
                     return glib::ControlFlow::Continue;
@@ -272,13 +503,14 @@ fn start_pipeline(
     *active.borrow_mut() = Some(Running {
         path: path.to_path_buf(),
         pipeline: pipeline.clone(),
+        requested_state: Cell::new(gst::State::Null),
         watch,
     });
-    if let Err(err) = pipeline.set_state(gst::State::Playing) {
+    let result = request_pipeline_state(active.borrow().as_ref().unwrap(), target, inhibitor);
+    if let Err(err) = result {
         stop(active, picture, button, inhibitor);
         return Err(format!("Cannot start capture: {err}"));
     }
-    inhibitor.set_capture_active(true);
     message.set_visible(false);
     button.set_label("Stop");
     eprintln!("Started capture from {}", path.display());
@@ -410,9 +642,9 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     overlay.add_css_class("kvm-view");
     INSTALL_STYLE.call_once(|| {
         let css = gtk::CssProvider::new();
-        #[cfg(feature = "native-yuv")]
+        #[cfg(any(feature = "native-yuv", feature = "background-throttle"))]
         css.load_from_string(".kvm-view { background-color: #000; }");
-        #[cfg(not(feature = "native-yuv"))]
+        #[cfg(not(any(feature = "native-yuv", feature = "background-throttle")))]
         css.load_from_data(".kvm-view { background-color: #000; }");
         gtk::style_context_add_provider_for_display(
             &gtk::prelude::WidgetExt::display(&window),
@@ -559,7 +791,15 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
             glib::Propagation::Proceed
         });
     }
+    #[cfg(feature = "background-throttle")]
+    watch_capture_visibility(
+        &window,
+        &active,
+        &preference,
+        (&picture, &message, &start, &inhibitor),
+    );
     window.present();
+    #[cfg(not(feature = "background-throttle"))]
     start.emit_clicked();
     if monitor_error.is_some() && active.borrow().is_none() {
         notice(
@@ -609,10 +849,8 @@ mod tests {
                 Path::new("/etc/hosts"),
                 pipeline.clone(),
                 &self.active,
-                &self.picture,
-                &self.message,
-                &self.button,
-                &self.inhibitor,
+                (&self.picture, &self.message, &self.button, &self.inhibitor),
+                gst::State::Playing,
             )
         }
     }
@@ -654,6 +892,291 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "background-throttle")]
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_queued_playing_message_does_not_inhibit_a_paused_graph() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let pipeline =
+                test_pipeline("videotestsrc is-live=true ! fakesink async=false sync=false");
+            start_pipeline(
+                Path::new("/etc/hosts"),
+                pipeline.clone(),
+                &ui.active,
+                (&ui.picture, &ui.message, &ui.button, &ui.inhibitor),
+                gst::State::Paused,
+            )
+            .unwrap();
+            // A resume may still be pending when a prior Playing message arrives.
+            ui.active
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .requested_state
+                .set(gst::State::Playing);
+            pipeline
+                .bus()
+                .unwrap()
+                .post(
+                    gst::message::StateChanged::builder(
+                        gst::State::Paused,
+                        gst::State::Playing,
+                        gst::State::VoidPending,
+                    )
+                    .src(&pipeline)
+                    .build(),
+                )
+                .unwrap();
+            let done = Rc::new(Cell::new(false));
+            let dispatched = done.clone();
+            glib::idle_add_local_once(move || dispatched.set(true));
+            dispatch_until(|| done.get());
+            assert_eq!(pipeline.current_state(), gst::State::Paused);
+            assert!(
+                !ui.inhibitor.state.borrow().0,
+                "a queued message is not proof of actual Playing"
+            );
+        });
+    }
+
+    #[cfg(feature = "background-throttle")]
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_started_hidden_stays_paused_until_map() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            assert!(!ui._window.is_mapped());
+            assert!(
+                ui.active.borrow().is_none(),
+                "nothing allocated before initial map/start"
+            );
+            let pipeline =
+                test_pipeline("videotestsrc is-live=true ! fakesink async=false sync=false");
+            start_pipeline(
+                Path::new("/etc/hosts"),
+                pipeline.clone(),
+                &ui.active,
+                (&ui.picture, &ui.message, &ui.button, &ui.inhibitor),
+                capture_state_for_window(&ui._window),
+            )
+            .unwrap();
+            assert_eq!(
+                pipeline.current_state(),
+                gst::State::Paused,
+                "hidden Start/hotplug must not enter Playing"
+            );
+            assert!(!ui.inhibitor.state.borrow().0);
+            assert_eq!(ui.button.label().as_deref(), Some("Stop"));
+            assert!(sync_capture_visibility(
+                &ui.active,
+                CapturePreference::Automatic,
+                true,
+                gtk::gdk::ToplevelState::empty(),
+                (&ui.picture, &ui.message, Some(&ui.button), &ui.inhibitor),
+            )
+            .unwrap());
+            dispatch_until(|| {
+                pipeline.current_state() == gst::State::Playing && ui.inhibitor.state.borrow().0
+            });
+        });
+    }
+
+    #[cfg(feature = "background-throttle")]
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_background_pause_retains_graph_and_stops_frames() {
+        use std::sync::{
+            atomic::{AtomicUsize, Ordering},
+            Arc,
+        };
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let pipeline = test_pipeline("videotestsrc is-live=true ! video/x-raw,framerate=60/1 ! fakesink name=frames signal-handoffs=true sync=false");
+            let frames = Arc::new(AtomicUsize::new(0));
+            let counter = frames.clone();
+            pipeline
+                .by_name("frames")
+                .unwrap()
+                .connect("handoff", false, move |_| {
+                    counter.fetch_add(1, Ordering::Relaxed);
+                    None
+                });
+            ui.start(&pipeline).unwrap();
+            dispatch_until(|| frames.load(Ordering::Relaxed) >= 3);
+            let picture = ui.picture.paintable();
+            let widgets = (&ui.picture, &ui.message, Some(&ui.button), &ui.inhibitor);
+            assert!(sync_capture_visibility(
+                &ui.active,
+                CapturePreference::Automatic,
+                false,
+                gtk::gdk::ToplevelState::empty(),
+                widgets
+            )
+            .unwrap());
+            let (_, current, _) = pipeline.state(gst::ClockTime::from_seconds(2));
+            assert_eq!(current, gst::State::Paused);
+            let paused = frames.load(Ordering::Relaxed);
+            std::thread::sleep(Duration::from_millis(100));
+            assert_eq!(
+                frames.load(Ordering::Relaxed),
+                paused,
+                "Paused must stop live frame production"
+            );
+            assert!(ui
+                .active
+                .borrow()
+                .as_ref()
+                .is_some_and(|running| running.pipeline == pipeline
+                    && running.path == Path::new("/etc/hosts")));
+            assert_eq!(ui.picture.paintable(), picture);
+            assert_eq!(ui.button.label().as_deref(), Some("Stop"));
+            assert!(
+                !ui.inhibitor.state.borrow().0,
+                "allocated Paused is not actual Playing"
+            );
+            assert!(
+                !sync_capture_visibility(
+                    &ui.active,
+                    CapturePreference::Automatic,
+                    false,
+                    gtk::gdk::ToplevelState::empty(),
+                    widgets
+                )
+                .unwrap(),
+                "duplicate notification must not request a state again"
+            );
+            assert!(sync_capture_visibility(
+                &ui.active,
+                CapturePreference::Automatic,
+                true,
+                gtk::gdk::ToplevelState::empty(),
+                widgets
+            )
+            .unwrap());
+            dispatch_until(|| {
+                frames.load(Ordering::Relaxed) >= paused + 3 && ui.inhibitor.state.borrow().0
+            });
+            stop(&ui.active, &ui.picture, &ui.button, &ui.inhibitor);
+            assert!(!sync_capture_visibility(
+                &ui.active,
+                CapturePreference::Paused,
+                true,
+                gtk::gdk::ToplevelState::empty(),
+                widgets
+            )
+            .unwrap());
+            assert!(
+                ui.active.borrow().is_none(),
+                "visibility must never override manual Stop"
+            );
+            assert_eq!(pipeline.current_state(), gst::State::Null);
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_watch_does_not_retain_capture_through_start_button() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let active: ActiveCapture = Rc::new(RefCell::new(None));
+            let weak = Rc::downgrade(&active);
+            let button = gtk::Button::with_label("Start");
+            let owned = active.clone();
+            button.connect_clicked(move |_| {
+                let _ = owned.borrow();
+            });
+            let pipeline =
+                test_pipeline("videotestsrc is-live=true ! fakesink async=false sync=false");
+            start_pipeline(
+                Path::new("/etc/hosts"),
+                pipeline.clone(),
+                &active,
+                (&ui.picture, &ui.message, &button, &ui.inhibitor),
+                gst::State::Paused,
+            )
+            .unwrap();
+            drop(button);
+            drop(active);
+            let retained = weak.upgrade();
+            // Always clean up the RED fixture before asserting the ownership bug.
+            if let Some(active) = &retained {
+                stop(active, &ui.picture, &ui.button, &ui.inhibitor);
+            }
+            pipeline.set_state(gst::State::Null).unwrap();
+            assert!(
+                retained.is_none(),
+                "watch -> button -> clicked -> ActiveCapture is a cycle"
+            );
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn pipeline_async_error_retires_resources_without_start_button() {
+        gtk::test_synced(|| {
+            gst::init().unwrap();
+            let window = gtk::ApplicationWindow::builder().build();
+            let active: ActiveCapture = Rc::new(RefCell::new(None));
+            let picture = gtk::Picture::new();
+            let message = gtk::Label::new(None);
+            let button = gtk::Button::with_label("Start");
+            let weak_button = button.downgrade();
+            let inhibitor = Rc::new(InhibitController::new(&window));
+            let paintable = gtk::gdk::MemoryTexture::new(
+                1,
+                1,
+                gtk::gdk::MemoryFormat::R8g8b8a8,
+                &glib::Bytes::from_static(&[0, 0, 0, 255]),
+                4,
+            );
+            picture.set_paintable(Some(&paintable));
+            let before = hosts_fds();
+            let pipeline = test_pipeline(
+                "filesrc location=/etc/hosts ! identity error-after=1 ! fakesink async=false sync=false",
+            );
+            start_pipeline(
+                Path::new("/etc/hosts"),
+                pipeline.clone(),
+                &active,
+                (&picture, &message, &button, &inhibitor),
+                gst::State::Playing,
+            )
+            .unwrap();
+            assert_eq!(hosts_fds(), before + 1, "filesrc must really hold its FD");
+            dispatch_until(|| message.text().starts_with("Capture error:"));
+            assert!(active.borrow().is_some(), "retirement must still be queued");
+            drop(button);
+            let button_retained = weak_button.upgrade().is_some();
+            let dispatched = Rc::new(Cell::new(false));
+            let done = dispatched.clone();
+            glib::idle_add_local_once(move || done.set(true));
+            dispatch_until(|| dispatched.get());
+            let current = pipeline.current_state();
+            let retained_fds = hosts_fds() - before;
+            // Inspect cleanup before ensuring the fixture is harmless even on RED.
+            pipeline.set_state(gst::State::Null).unwrap();
+            assert!(
+                !button_retained,
+                "Start must be gone before retirement runs"
+            );
+            assert!(
+                active.borrow().is_none(),
+                "retirement must not require Start"
+            );
+            assert_eq!(current, gst::State::Null);
+            assert_eq!(retained_fds, 0);
+            assert!(picture.paintable().is_none());
+            assert!(!inhibitor.state.borrow().0);
+            assert!(message.is_visible());
+            assert!(pipeline
+                .bus()
+                .unwrap()
+                .add_watch_local(|_, _| glib::ControlFlow::Continue)
+                .is_ok());
+        });
+    }
+
     #[test]
     #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
     fn pipeline_callbacks_do_not_retain_start_button_or_capture() {
@@ -692,10 +1215,8 @@ mod tests {
                                 Path::new("/etc/hosts"),
                                 pipeline.clone(),
                                 &active,
-                                &picture,
-                                &message,
-                                button,
-                                &inhibitor,
+                                (&picture, &message, button, &inhibitor),
+                                gst::State::Playing,
                             )
                             .unwrap();
                         }
@@ -730,74 +1251,6 @@ mod tests {
                 vec![(false, false, false), (true, false, false)],
                 "neither the bus watch nor deferred retirement may retain Start and its capture state"
             );
-        });
-    }
-
-    #[test]
-    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
-    fn pipeline_async_error_retires_resources_without_start_button() {
-        gtk::test_synced(|| {
-            gst::init().unwrap();
-            let window = gtk::ApplicationWindow::builder().build();
-            let active: ActiveCapture = Rc::new(RefCell::new(None));
-            let picture = gtk::Picture::new();
-            let message = gtk::Label::new(None);
-            let button = gtk::Button::with_label("Start");
-            let weak_button = button.downgrade();
-            let inhibitor = Rc::new(InhibitController::new(&window));
-            let paintable = gtk::gdk::MemoryTexture::new(
-                1,
-                1,
-                gtk::gdk::MemoryFormat::R8g8b8a8,
-                &glib::Bytes::from_static(&[0, 0, 0, 255]),
-                4,
-            );
-            picture.set_paintable(Some(&paintable));
-            let before = hosts_fds();
-            let pipeline = test_pipeline(
-                "filesrc location=/etc/hosts ! identity error-after=1 ! fakesink async=false sync=false",
-            );
-            start_pipeline(
-                Path::new("/etc/hosts"),
-                pipeline.clone(),
-                &active,
-                &picture,
-                &message,
-                &button,
-                &inhibitor,
-            )
-            .unwrap();
-            assert_eq!(hosts_fds(), before + 1, "filesrc must really hold its FD");
-            dispatch_until(|| message.text().starts_with("Capture error:"));
-            assert!(active.borrow().is_some(), "retirement must still be queued");
-            drop(button);
-            let button_retained = weak_button.upgrade().is_some();
-            let dispatched = Rc::new(Cell::new(false));
-            let done = dispatched.clone();
-            glib::idle_add_local_once(move || done.set(true));
-            dispatch_until(|| dispatched.get());
-            let current = pipeline.current_state();
-            let retained_fds = hosts_fds() - before;
-            // Inspect cleanup before ensuring the fixture is harmless even on RED.
-            pipeline.set_state(gst::State::Null).unwrap();
-            assert!(
-                !button_retained,
-                "Start must be gone before retirement runs"
-            );
-            assert!(
-                active.borrow().is_none(),
-                "retirement must not require Start"
-            );
-            assert_eq!(current, gst::State::Null);
-            assert_eq!(retained_fds, 0);
-            assert!(picture.paintable().is_none());
-            assert!(!inhibitor.state.borrow().0);
-            assert!(message.is_visible());
-            assert!(pipeline
-                .bus()
-                .unwrap()
-                .add_watch_local(|_, _| glib::ControlFlow::Continue)
-                .is_ok());
         });
     }
 
@@ -1038,6 +1491,143 @@ mod tests {
             Path::new("/dev/video3"),
             running
         ));
+    }
+
+    #[cfg(feature = "background-throttle")]
+    #[test]
+    fn initial_start_is_consumed_only_on_first_map_and_manual_stop_wins() {
+        let started = Cell::new(false);
+        assert!(!take_initial_start(
+            false,
+            CapturePreference::Automatic,
+            false,
+            &started
+        ));
+        assert!(!started.get());
+        assert!(take_initial_start(
+            true,
+            CapturePreference::Automatic,
+            false,
+            &started
+        ));
+        assert!(!take_initial_start(
+            true,
+            CapturePreference::Automatic,
+            false,
+            &started
+        ));
+        let stopped = Cell::new(false);
+        assert!(!take_initial_start(
+            true,
+            CapturePreference::Paused,
+            false,
+            &stopped
+        ));
+        assert!(!take_initial_start(
+            true,
+            CapturePreference::Automatic,
+            false,
+            &stopped
+        ));
+    }
+
+    #[cfg(feature = "background-throttle")]
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn visibility_watch_does_not_start_or_realize_before_map() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let clicks = Rc::new(Cell::new(0));
+            let observed = clicks.clone();
+            ui.button
+                .connect_clicked(move |_| observed.set(observed.get() + 1));
+            watch_capture_visibility(
+                &ui._window,
+                &ui.active,
+                &Rc::new(Cell::new(CapturePreference::Automatic)),
+                (&ui.picture, &ui.message, &ui.button, &ui.inhibitor),
+            );
+            assert!(ui.active.borrow().is_none());
+            assert!(ui._window.surface().is_none());
+            assert_eq!(clicks.get(), 0);
+        });
+    }
+
+    #[cfg(feature = "background-throttle")]
+    #[test]
+    #[ignore = "requires a GTK display; never presents a window or opens a capture device"]
+    fn visibility_watch_does_not_retain_capture_through_start_button() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let active: ActiveCapture = Rc::new(RefCell::new(None));
+            let weak = Rc::downgrade(&active);
+            let button = gtk::Button::with_label("Start");
+            let owned = active.clone();
+            button.connect_clicked(move |_| {
+                let _ = owned.borrow();
+            });
+            watch_capture_visibility(
+                &ui._window,
+                &active,
+                &Rc::new(Cell::new(CapturePreference::Automatic)),
+                (&ui.picture, &ui.message, &button, &ui.inhibitor),
+            );
+            drop(button);
+            drop(active);
+            assert!(
+                weak.upgrade().is_none(),
+                "visibility observers must not own capture through Start"
+            );
+        });
+    }
+
+    #[cfg(feature = "background-throttle")]
+    #[test]
+    fn first_map_does_not_toggle_a_hidden_hotplug_capture() {
+        let started = Cell::new(false);
+        assert!(!take_initial_start(
+            true,
+            CapturePreference::Automatic,
+            true,
+            &started
+        ));
+        assert!(started.get());
+    }
+
+    #[cfg(feature = "background-throttle")]
+    #[test]
+    fn background_policy_pauses_only_for_compositor_visibility() {
+        use gtk::gdk::ToplevelState as State;
+        assert_eq!(
+            capture_target_state(CapturePreference::Automatic, true, State::empty()),
+            Some(gst::State::Playing)
+        );
+        assert_eq!(
+            capture_target_state(CapturePreference::Automatic, true, State::FOCUSED),
+            Some(gst::State::Playing)
+        );
+        for state in [
+            State::SUSPENDED,
+            State::MINIMIZED,
+            State::SUSPENDED | State::FOCUSED,
+        ] {
+            assert_eq!(
+                capture_target_state(CapturePreference::Automatic, true, state),
+                Some(gst::State::Paused)
+            );
+        }
+        assert_eq!(
+            capture_target_state(CapturePreference::Automatic, false, State::empty()),
+            Some(gst::State::Paused)
+        );
+        assert_eq!(
+            capture_target_state(CapturePreference::Paused, true, State::empty()),
+            None
+        );
+        assert_eq!(
+            capture_target_state(CapturePreference::Paused, false, State::SUSPENDED),
+            None
+        );
     }
 
     #[test]

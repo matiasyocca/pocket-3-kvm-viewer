@@ -5,6 +5,7 @@ edition = "2021"
 
 [features]
 benchmark = []
+background-throttle = ["gtk4/v4_12"]
 native-yuv = ["gst-plugin-gtk4/gtk_v4_20"]
 
 [dependencies]

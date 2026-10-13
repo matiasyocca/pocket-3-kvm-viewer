@@ -1,0 +1,2214 @@
+{
+  "status": "accepted: corrected final safety re-review passed, parent lifecycle/live-capture and exact Nix package verification complete",
+  "source_mode": "1920x1080 YUY2 60/1",
+  "cpu_one_core_medians_before": {
+    "visible": 21.065264425041814,
+    "hidden": 1.5332461941490774,
+    "returned": 21.13183473826351
+  },
+  "cpu_one_core_medians_after": {
+    "visible": 21.465562480990773,
+    "hidden": 0.0,
+    "returned": 21.46543420444647
+  },
+  "hidden_cpu_samples_after": [
+    0.0,
+    0.0,
+    0.06666231477741524
+  ],
+  "steady_playing_sink_fps_median": 59.99,
+  "paused_counter_stayed_at": 3064,
+  "paused_zero_fps_intervals": 15,
+  "same_pipeline_ten_cycles": [
+    {
+      "cycle": 1,
+      "request": "0:00:06.330483406     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:06.349444758     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa8003ea0",
+      "resume_to_first_sink_render_ms": 18.96135199999982,
+      "rendered_buffers_before_next_pause_or_exit": 124
+    },
+    {
+      "cycle": 2,
+      "request": "0:00:10.472396264     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:10.497142525     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa800c4f0",
+      "resume_to_first_sink_render_ms": 24.74626099999888,
+      "rendered_buffers_before_next_pause_or_exit": 123
+    },
+    {
+      "cycle": 3,
+      "request": "0:00:14.612033479     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:14.650185863     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa8003ea0",
+      "resume_to_first_sink_render_ms": 38.152383999999984,
+      "rendered_buffers_before_next_pause_or_exit": 123
+    },
+    {
+      "cycle": 4,
+      "request": "0:00:18.752540116     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:18.780994854     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa800dbd0",
+      "resume_to_first_sink_render_ms": 28.454738000000646,
+      "rendered_buffers_before_next_pause_or_exit": 123
+    },
+    {
+      "cycle": 5,
+      "request": "0:00:22.891285777     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:22.913098616     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa800ba40",
+      "resume_to_first_sink_render_ms": 21.812838999998974,
+      "rendered_buffers_before_next_pause_or_exit": 124
+    },
+    {
+      "cycle": 6,
+      "request": "0:00:27.035698169     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:27.065035853     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa800ca30",
+      "resume_to_first_sink_render_ms": 29.337684000001474,
+      "rendered_buffers_before_next_pause_or_exit": 123
+    },
+    {
+      "cycle": 7,
+      "request": "0:00:31.176783620     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:31.197073888     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa800dbd0",
+      "resume_to_first_sink_render_ms": 20.29026800000011,
+      "rendered_buffers_before_next_pause_or_exit": 124
+    },
+    {
+      "cycle": 8,
+      "request": "0:00:35.320606977     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:35.349105176     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa800c4f0",
+      "resume_to_first_sink_render_ms": 28.49819900000483,
+      "rendered_buffers_before_next_pause_or_exit": 123
+    },
+    {
+      "cycle": 9,
+      "request": "0:00:39.467318792     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:39.497232546     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa800ca30",
+      "resume_to_first_sink_render_ms": 29.91375399999896,
+      "rendered_buffers_before_next_pause_or_exit": 123
+    },
+    {
+      "cycle": 10,
+      "request": "0:00:43.613673599     327620     327620 DEBUG             GST_STATES gstelement.c:2949:gst_element_set_state_func:<pipeline0> set_state to PLAYING",
+      "first_sink_render": "0:00:43.628186018     327620     327682 DEBUG               basesink gstbasesink.c:3948:gst_base_sink_chain_unlocked:<display> rendering object 0x7fffa800dbd0",
+      "resume_to_first_sink_render_ms": 14.512418999999,
+      "rendered_buffers_before_next_pause_or_exit": 123
+    }
+  ],
+  "resume_to_first_sink_render_ms": {
+    "median": 26.600499499999763,
+    "max": 38.152383999999984
+  },
+  "limitations": [
+    "Trace timings measure pipeline state request to a sink render, not compositor presentation, first newly captured HDMI content or end-to-end latency.",
+    "Paused keeps pipeline/video-node resources; USB traffic, GPU power and total energy are unmeasured.",
+    "CPU comparison is three 15-second samples per state without GST_DEBUG; ten-cycle trace is reliability/return evidence, not efficiency data."
+  ],
+  "ten_cycle_cpu_samples": [
+    {
+      "pid": 327620,
+      "label": "visible",
+      "elapsed_seconds": 1.000797219996457,
+      "cpu_one_core_pct": 20.983271716196757,
+      "cpu_machine_pct": 5.245817929049189,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "145280 kB",
+        "VmRSS": "145280 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 20.983271716196757
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.9992034150569885
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:15.709265+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.0009517980070086,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "145280 kB",
+        "VmRSS": "145280 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:17.777938+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.0008954549994087,
+      "cpu_one_core_pct": 22.979422960826202,
+      "cpu_machine_pct": 5.7448557402065505,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "149352 kB",
+        "VmRSS": "149352 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 20.981212268580443
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.9991053461228784
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:19.849334+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.0009163009963231,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "149352 kB",
+        "VmRSS": "149352 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:21.919810+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.000972036010353,
+      "cpu_one_core_pct": 21.978635974374473,
+      "cpu_machine_pct": 5.494658993593618,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153408 kB",
+        "VmRSS": "153408 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 19.980578158522246
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.9990289079261123
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:23.990699+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.0010638999956427,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153408 kB",
+        "VmRSS": "153408 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:26.058729+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.00095666400739,
+      "cpu_one_core_pct": 22.97801775745028,
+      "cpu_machine_pct": 5.74450443936257,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153412 kB",
+        "VmRSS": "153412 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 20.97992925680243
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:28.131384+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.0008347580005648,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153412 kB",
+        "VmRSS": "153412 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:30.199472+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.0008699159952812,
+      "cpu_one_core_pct": 21.980878482217985,
+      "cpu_machine_pct": 5.495219620554496,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153416 kB",
+        "VmRSS": "153416 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 20.981747642117167
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 1.998261680201635
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:32.269695+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.0010273789957864,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153416 kB",
+        "VmRSS": "153416 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:34.338958+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.0008654670091346,
+      "cpu_one_core_pct": 21.980976190278742,
+      "cpu_machine_pct": 5.4952440475696855,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 20.981840908902434
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:36.412008+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.0009907869971357,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:38.481241+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.0007869089895394,
+      "cpu_one_core_pct": 22.981915324234528,
+      "cpu_machine_pct": 5.745478831058632,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 21.9827016144852
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.9992137097493273
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:40.555629+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.0009380340052303,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:42.623638+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.00157985300757,
+      "cpu_one_core_pct": 20.96687541881025,
+      "cpu_machine_pct": 5.241718854702563,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 19.968452779819284
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 1.9968452779819286
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:44.695092+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.0013276600075187,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:46.765830+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.0008300929912366,
+      "cpu_one_core_pct": 22.980923696307553,
+      "cpu_machine_pct": 5.745230924076888,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 20.982582505324284
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:48.839014+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.0010943399975076,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:50.911512+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.000881683008629,
+      "cpu_one_core_pct": 22.979739154444804,
+      "cpu_machine_pct": 5.744934788611201,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 19.982381873430263
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 1.9982381873430262
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:52.985867+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "hidden",
+      "elapsed_seconds": 1.000792144011939,
+      "cpu_one_core_pct": 0.0,
+      "cpu_machine_pct": 0.0,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:55.060201+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1000,
+        "name": "1000"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    },
+    {
+      "pid": 327620,
+      "label": "returned",
+      "elapsed_seconds": 1.0009130639955401,
+      "cpu_one_core_pct": 21.979930916455725,
+      "cpu_machine_pct": 5.494982729113931,
+      "logical_cores": 4,
+      "status": {
+        "VmHWM": "153420 kB",
+        "VmRSS": "153420 kB",
+        "Threads": "14"
+      },
+      "threads": [
+        {
+          "tid": "327620",
+          "name": "kvm-native-back",
+          "cpu_one_core_pct": 20.980843147525917
+        },
+        {
+          "tid": "327682",
+          "name": "queue0:src",
+          "cpu_one_core_pct": 0.9990877689298057
+        },
+        {
+          "tid": "327621",
+          "name": "pool-spawner",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327622",
+          "name": "gmain",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327623",
+          "name": "gdbus",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327667",
+          "name": "[pango] fontcon",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327669",
+          "name": "pool-0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327676",
+          "name": "kvm-nat:disk$0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327677",
+          "name": "kvm-na:traceq0",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327678",
+          "name": "kvm-nat:disk$1",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327679",
+          "name": "kvm-nat:disk$2",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327680",
+          "name": "kvm-nat:disk$3",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327683",
+          "name": "v4l2src0:src",
+          "cpu_one_core_pct": 0.0
+        },
+        {
+          "tid": "327695",
+          "name": "pool-3",
+          "cpu_one_core_pct": 0.0
+        }
+      ],
+      "variant": "native-background-ten-cycles",
+      "repeat": 0,
+      "binary": "${HOME}/.hermes/cache/scratch/kvm-native-background-instrumented",
+      "source_revision": "uncommitted",
+      "timestamp": "2026-10-13T18:37:57.133066+00:00",
+      "window_size": [
+        960,
+        540
+      ],
+      "workspace": {
+        "id": 1,
+        "name": "1"
+      },
+      "log": "${HOME}/.hermes/cache/scratch/kvm-background-ten-cycles.jsonl.native-background-ten-cycles.log"
+    }
+  ],
+  "package": {
+    "path": "/nix/store/sbi1wpnxgqn2nwyvrvq9mwvjl9glqk88-pocket3-kvm-viewer-0.1.0",
+    "features": [
+      "native-yuv",
+      "background-throttle"
+    ],
+    "benchmark_instrumentation": false,
+    "cpu_one_core_medians": {
+      "visible": 23.531941781358253,
+      "hidden": 0.0,
+      "returned": 22.398872497492363
+    },
+    "build_and_flake_checks": "passed"
+  },
+  "diagnostic_cross_activation_regression": {
+    "file": "examples/visibility_probe.rs",
+    "fix": "NON_UNIQUE application flag; production ID retained without unique bus-name ownership",
+    "targeted_test": "tests::diagnostic_cannot_cross_activate_production_application",
+    "red_exit_code": 101,
+    "red_expected_assertion": "the hardware-free diagnostic must not activate the production application",
+    "green_tests_passed": 1,
+    "runtime_cross_activation_exercised": false,
+    "scope": "unregistered application construction only; no window presentation or capture"
+  },
+  "default_validation": {
+    "regular_tests_passed": 16,
+    "selected_ignored_pipeline_tests_passed": 6,
+    "clippy_all_targets_D_warnings": "passed",
+    "release_build": "passed"
+  }
+}

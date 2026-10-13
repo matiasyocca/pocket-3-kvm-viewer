@@ -40,6 +40,22 @@ RSS did not show a significant regression in these confirmation runs: baseline s
 
 Status: accepted after independent review, exact packaged-build verification, three repeated samples per state, and unchanged source mode. The verified output was `/nix/store/kkz4yi9pj1kcli33jhvrazjy4mllwhdw-pocket3-kvm-viewer-0.1.0`. Plain Cargo compatibility remains available; the Nix package explicitly enables native-YUV against GTK >=4.20. `performance/frame-delivery.json` preserves the delivered-FPS/caps evidence. No claim of end-to-end zero-copy is made.
 
+## Visibility-driven suspension (candidate 1)
+
+The optional `background-throttle` feature uses GDK SUSPENDED/MINIMIZED and GTK map/unmap signals, not focus/input inactivity or polling. The Nix package enables it with native YUV. Three 15-second samples per state compare the native-YUV cleanup baseline against the combined build:
+
+| Variant | Visible CPU, one core | Hidden CPU, one core | Returned CPU, one core |
+|---|---:|---:|---:|
+| Native YUV + cleanup | 21.065% | 1.533% | 21.132% |
+| Plus visibility pause/resume | 21.466% | 0.000% | 21.465% |
+| Exact Nix package, no instrumentation | 23.532% | 0.000% | 22.399% |
+
+Hidden samples were 0.000%, 0.000%, and 0.067% of one core; zero is sampling resolution, not proof of zero work. The sink buffer counter stayed at 3064 throughout 15 complete paused diagnostic intervals, then resumed approximately 60 FPS (steady Playing median 59.990) at unchanged 1080p60 YUY2. There were no capture errors. Visible/unfocused operation remained live. Scoped before/returned screenshots showed the target console and an advancing build line, with no new visible corruption; compositor transparency was visible in both.
+
+Ten additional real hide/return cycles retained the same pipeline and each returned to rendering. GStreamer trace timestamps measured state-request-to-first-sink-render median 26.600 ms, maximum 38.152 ms. This is not first newly captured HDMI content, compositor presentation, or end-to-end latency. Trace-enabled CPU samples are reliability evidence only and are excluded from the efficiency comparison. Synthetic lifecycle tests verify manual Stop intent, hidden start, graph/node retention, stale-error safety, ownership, and actual-Playing inhibition. These do not replace physical unplug/replug or touchscreen testing.
+
+Paused capture retains the video node and last image; USB traffic, total energy and GPU allocations were not measured. Evidence and exact trace excerpts are in `performance/background-throttle.json`; production CPU samples are the `native-background` rows. Parent integration passed 20 regular tests plus nine selected pipeline fixtures and two visibility-observer fixtures with native-YUV/background/benchmark enabled. The exact Nix package `/nix/store/sbi1wpnxgqn2nwyvrvq9mwvjl9glqk88-pocket3-kvm-viewer-0.1.0` built and passed flake checks; its repeated hidden samples were all 0.000%. Its active sample medians were somewhat higher than the instrumented comparison, so no active-viewing improvement is attributed to suspension. Final independent safety re-review passed after the hardware-free diagnostic's NON_UNIQUE correction; visibility suspension is accepted without claiming an active-viewing CPU improvement.
+
 ## Transport probes (candidates 5 and 10)
 
 `performance/transport.jsonl` contains bounded raw-source-to-fakesink probes. The first two auto-mode runs completed, then a third stalled. Later modes encountered UVC TRY_FMT EIO/USB probe timeouts; kernel logs also reported UVC DMA allocation failure and xHCI errors. The user subsequently reported successful capture in the viewer, and the native/baseline confirmations above completed normally.
@@ -54,6 +70,6 @@ The integrated real-capture check at unchanged 1080p60 measured 21.065% visible,
 
 ## Remaining candidate decisions
 
-Candidate 1 (visibility-driven suspension), 3 (GL), 4 (error cleanup), and the remaining lower-ranked candidates are still being evaluated. No unmeasured fix has been declared a net improvement. Quality-reducing source FPS/resolution changes will not silently replace the default stream; unsupported/ineffective candidates are to be recorded and dropped.
+Candidate 1 (visibility-driven suspension) is accepted after corrected final safety review and packaged verification. Candidate 3 (GL) has a bounded finishing pass; all further optimization work is deferred at the user's wrap-up request. Candidate 4 (error cleanup) is accepted and committed. No unmeasured fix has been declared a net improvement. Quality-reducing source FPS/resolution changes will not silently replace the default stream; unsupported/ineffective candidates are to be recorded and dropped.
 
 Total energy/power and full end-to-end latency have not been measured. CPU results alone do not prove a total-power reduction.
