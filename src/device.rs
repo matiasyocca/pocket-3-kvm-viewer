@@ -57,10 +57,29 @@ pub fn list_kvm_nodes(dev_dir: &Path, sys_video_dir: &Path) -> io::Result<Vec<Pa
 
 pub fn choose_kvm_node(nodes: &[PathBuf]) -> Result<PathBuf, &'static str> {
     match nodes {
-        [] => Err("No KVM capture device found. Attach the module and tap Refresh."),
+        [] => Err("No KVM capture device found. Attach the module and tap Start."),
         [node] => Ok(node.clone()),
         _ => Err("Multiple KVM capture devices found. Use --device /dev/videoN."),
     }
+}
+
+pub fn resolve_capture_node(
+    dev_dir: &Path,
+    sys_video_dir: &Path,
+    explicit: Option<&str>,
+) -> Result<PathBuf, String> {
+    if let Some(path) = explicit {
+        return list_video_nodes(dev_dir)
+            .map_err(|err| err.to_string())?
+            .into_iter()
+            .find(|node| node == Path::new(path))
+            .ok_or_else(|| {
+                format!("Video node {path} is not present. Tap Start after attaching it.")
+            });
+    }
+    let nodes = list_kvm_nodes(dev_dir, sys_video_dir)
+        .map_err(|err| format!("Could not search video devices: {err}"))?;
+    choose_kvm_node(&nodes).map_err(str::to_owned)
 }
 
 #[cfg(test)]
@@ -136,6 +155,45 @@ mod tests {
         assert_eq!(choose_kvm_node(&one), Ok(PathBuf::from("/dev/video2")));
         assert!(choose_kvm_node(&[]).unwrap_err().contains("No KVM"));
         assert!(choose_kvm_node(&many).unwrap_err().contains("Multiple"));
+    }
+
+    #[test]
+    fn rediscovers_capture_node_after_hotplug() {
+        use std::os::unix::fs::symlink;
+
+        let root = std::env::temp_dir().join(format!(
+            "pocket3-kvm-retry-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let dev = root.join("dev");
+        let sys = root.join("sys/class/video4linux");
+        fs::create_dir_all(&dev).unwrap();
+        assert!(resolve_capture_node(&dev, &sys, None).is_err());
+
+        let usb = root.join("sys/devices/usb4/4-2/4-2:1.0");
+        fs::create_dir_all(&usb).unwrap();
+        fs::write(usb.parent().unwrap().join("idVendor"), "3188\n").unwrap();
+        fs::write(usb.parent().unwrap().join("idProduct"), "1000\n").unwrap();
+        let video = sys.join("video2");
+        fs::create_dir_all(&video).unwrap();
+        fs::write(video.join("index"), "0\n").unwrap();
+        symlink(&usb, video.join("device")).unwrap();
+        fs::write(dev.join("video2"), b"").unwrap();
+
+        assert_eq!(
+            resolve_capture_node(&dev, &sys, None).unwrap(),
+            dev.join("video2")
+        );
+        assert_eq!(
+            resolve_capture_node(&dev, &sys, dev.join("video2").to_str()).unwrap(),
+            dev.join("video2")
+        );
+        assert!(resolve_capture_node(&dev, &sys, Some("/dev/video9")).is_err());
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]

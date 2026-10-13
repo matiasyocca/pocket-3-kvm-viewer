@@ -1,9 +1,4 @@
-use std::{
-    cell::RefCell,
-    path::{Path, PathBuf},
-    rc::Rc,
-    sync::Once,
-};
+use std::{cell::RefCell, path::Path, rc::Rc, sync::Once};
 
 use gst::prelude::*;
 use gstreamer as gst;
@@ -35,22 +30,6 @@ fn stop(active: &ActiveCapture, picture: &gtk::Picture, button: &gtk::Button) {
     }
     picture.set_paintable(None::<&gtk::gdk::Paintable>);
     button.set_label("Start");
-}
-
-fn discover(explicit: Option<&str>) -> Result<PathBuf, String> {
-    let dev = Path::new("/dev");
-    if let Some(path) = explicit {
-        let nodes = device::list_video_nodes(dev).map_err(|err| err.to_string())?;
-        return nodes
-            .into_iter()
-            .find(|node| node == Path::new(path))
-            .ok_or_else(|| {
-                format!("Video node {path} is not present. Tap Refresh after attaching it.")
-            });
-    }
-    let nodes = device::list_kvm_nodes(dev, Path::new("/sys/class/video4linux"))
-        .map_err(|err| format!("Could not search video devices: {err}"))?;
-    device::choose_kvm_node(&nodes).map_err(str::to_owned)
 }
 
 fn start_capture(
@@ -129,10 +108,8 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     controls.set_valign(gtk::Align::Start);
     controls.set_margin_top(8);
     controls.set_margin_end(8);
-    let refresh = gtk::Button::with_label("Refresh");
     let start = gtk::Button::with_label("Start");
     let fullscreen = gtk::Button::with_label("Full screen");
-    controls.append(&refresh);
     controls.append(&start);
     controls.append(&fullscreen);
     overlay.add_overlay(&controls);
@@ -147,38 +124,11 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     window.set_child(Some(&overlay));
 
     let active: ActiveCapture = Rc::new(RefCell::new(None));
-    let selected: Rc<RefCell<Option<PathBuf>>> = Rc::new(RefCell::new(None));
     let explicit = initial_device.map(str::to_owned);
 
     {
-        let (active, selected, picture, message, button, explicit) = (
+        let (active, picture, message, button) = (
             active.clone(),
-            selected.clone(),
-            picture.clone(),
-            message.clone(),
-            start.clone(),
-            explicit.clone(),
-        );
-        refresh.connect_clicked(move |_| {
-            stop(&active, &picture, &button);
-            match discover(explicit.as_deref()) {
-                Ok(path) => {
-                    *selected.borrow_mut() = Some(path.clone());
-                    if let Err(err) = start_capture(&path, &active, &picture, &message, &button) {
-                        notice(&message, &err);
-                    }
-                }
-                Err(err) => {
-                    *selected.borrow_mut() = None;
-                    notice(&message, &err);
-                }
-            }
-        });
-    }
-    {
-        let (active, selected, picture, message, button) = (
-            active.clone(),
-            selected.clone(),
             picture.clone(),
             message.clone(),
             start.clone(),
@@ -187,15 +137,20 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
             if active.borrow().is_some() {
                 stop(&active, &picture, &button);
                 notice(&message, "Stopped. Tap Start to resume.");
-            } else if let Some(path) = selected.borrow().as_ref() {
-                if let Err(err) = start_capture(path, &active, &picture, &message, &button) {
-                    notice(&message, &err);
-                }
             } else {
-                notice(
-                    &message,
-                    "No capture device. Tap Refresh after attaching the module.",
-                );
+                match device::resolve_capture_node(
+                    Path::new("/dev"),
+                    Path::new("/sys/class/video4linux"),
+                    explicit.as_deref(),
+                ) {
+                    Ok(path) => {
+                        if let Err(err) = start_capture(&path, &active, &picture, &message, &button)
+                        {
+                            notice(&message, &err);
+                        }
+                    }
+                    Err(err) => notice(&message, &err),
+                }
             }
         });
     }
@@ -222,5 +177,5 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
         });
     }
     window.present();
-    refresh.emit_clicked();
+    start.emit_clicked();
 }
