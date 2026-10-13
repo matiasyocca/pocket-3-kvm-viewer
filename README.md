@@ -1,4 +1,4 @@
-# Pocket 3 KVM viewer
+# Pocket 3 KVM Viewer
 
 A Linux-first Rust/GTK4 application for the optional GPD Pocket 3 KVM module's HDMI-IN capture. The module, not this application, redirects the built-in keyboard and touchpad when its USB cable is connected to a target. There is no keyboard injection or privileged helper.
 
@@ -18,7 +18,7 @@ Then run:
 pkg-config --modversion gtk4 gstreamer-1.0 gstreamer-video-1.0
 cargo test
 cargo build --release
-./target/release/gpd-pocket3-kvm
+./target/release/pocket3-kvm-viewer
 ```
 
 For Nix with flakes enabled, use the pinned development shell (x86_64-linux and aarch64-linux):
@@ -31,13 +31,34 @@ cargo run --release
 
 Alternatively run one command without entering a shell: `nix develop -c cargo run --release`. The Nix shell supplies the same native libraries that a regular distribution installs as packages. The Rust binary has runtime GTK4/GStreamer shared-library dependencies; it is not a universal static binary. Builds on macOS/Windows are not supported: the capture source here is Linux V4L2.
 
+## Nix package and NixOS
+
+`nix build .#pocket3-kvm-viewer` builds the installable package (also available as `.#default`); `nix run .` launches it. The package installs the `pocket3-kvm-viewer` command and a desktop entry named “Pocket 3 KVM Viewer”. GTK and the necessary GStreamer runtime plugins are wrapped into the Nix package.
+
+After publishing this repository, add it as an input to your NixOS flake (substitute the actual GitHub path):
+
+```nix
+# In your flake's inputs:
+pocket3-kvm-viewer.url = "github:YOUR_USER/YOUR_REPO";
+
+# In your nixosSystem call, pass inputs to modules if you do not already:
+specialArgs = { inherit inputs; };
+
+# In a NixOS module taking { pkgs, inputs, ... }:
+environment.systemPackages = [
+  inputs.pocket3-kvm-viewer.packages.${pkgs.stdenv.hostPlatform.system}.default
+];
+```
+
+The explicit `pocket3-kvm-viewer` package attribute and `default` point to the same derivation. Only x86_64-linux has been built here; aarch64-linux is declared but has not been build-tested.
+
 ## Run
 
 Install the optional module. Connect the target's HDMI OUT to the module's HDMI IN (not the Pocket 3's own HDMI OUT). Launch the app: it finds the observed module USB ID `3188:1000`, excludes the metadata-only node, and immediately starts capture if there is exactly one match. Video fills the window under a small overlay with Stop/Start and Full screen controls; there is no device dropdown, Refresh button, or persistent status footer. Double-click the video area with the primary button to enter or leave full screen; the overlay Full screen button remains available for touch. The overlay controls and pointer hide after three seconds without pointer motion while the pointer is over the viewer; move the pointer or touch the screen to show the controls and restore the pointer. If the controls were hidden, the first touch reveals them and a second touch can press a button. Start rescans devices and resumes automatic capture after a manual pause. When no module is present, the app waits for a matching `/dev/videoN` to appear and starts capture automatically after a short debounce; unplugging the active module stops capture, releases its sleep inhibitor, and waits to reconnect. Stop intentionally pauses this automation (and releases the exclusive video node) until Start is tapped again. If a pipeline error occurs without a device removal, use Stop then Start to recover. Device monitoring uses GIO's `/dev` directory watcher; if monitoring is unavailable, manual Start remains the fallback. Errors and no-device messages appear over the video area only when needed. Connect the target's USB port to the module's USB IN to use hardware keyboard/touchpad forwarding; use the touchscreen to operate the controls if the physical keyboard/touchpad now control the target.
 
 Video-node numbering is not stable. `v4l2-ctl --list-devices`, `v4l2-ctl -d /dev/videoX --all`, or `/sys/class/video4linux/video*/name` can identify the device when needed. The chosen `/dev/videoX` must be readable by the current user. If capture fails, check permissions and `GST_DEBUG=2 cargo run` before changing system permissions. Never run the GUI as root just to access a video node.
 
-While capture is running and this window has focus, the viewer asks `systemd-logind` over the system D-Bus for an `idle:sleep` blocking inhibitor. This is independent of the window manager and desktop environment; `systemd-inhibit --list` should show `Pocket 3 KVM` while the window is focused. Focus loss, Stop, a pipeline error, window close, or process exit releases the inhibitor. If logind is unavailable or denies it, capture still works and the failure is printed to stderr. This only applies to power management honoring logind inhibitors; privileged forced suspend, lid handling configured to ignore inhibitors, or compositor-specific idle actions may still occur. Currently “source connected” means the UVC capture pipeline started successfully; the capture device does not expose a verified HDMI-signal-present indication, so an attached module without a working HDMI signal may also hold the lock until Stop or an error.
+While capture is running and this window has focus, the viewer asks `systemd-logind` over the system D-Bus for an `idle:sleep` blocking inhibitor. This is independent of the window manager and desktop environment; `systemd-inhibit --list` should show `Pocket 3 KVM Viewer` while the window is focused. Focus loss, Stop, a pipeline error, window close, or process exit releases the inhibitor. If logind is unavailable or denies it, capture still works and the failure is printed to stderr. This only applies to power management honoring logind inhibitors; privileged forced suspend, lid handling configured to ignore inhibitors, or compositor-specific idle actions may still occur. Currently “source connected” means the UVC capture pipeline started successfully; the capture device does not expose a verified HDMI-signal-present indication, so an attached module without a working HDMI signal may also hold the lock until Stop or an error.
 
 For a module revision with a different USB ID, or if multiple matching devices are attached, `cargo run --release -- --device /dev/video2` overrides discovery and starts the specified node immediately; substitute the actual device path. An invalid argument exits with a usage message.
 

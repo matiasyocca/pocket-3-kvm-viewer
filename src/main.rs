@@ -27,5 +27,5 @@ fn main() {
         .application_id("io.github.pocket3.KvmViewer")
         .build();
     app.connect_activate(move |app| ui::build(app, initial_device.as_deref()));
-    app.run_with_args(&["gpd-pocket3-kvm"]);
+    app.run_with_args(&["pocket3-kvm-viewer"]);
 }

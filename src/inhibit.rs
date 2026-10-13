@@ -19,7 +19,7 @@ impl SleepInhibitor {
                 "Inhibit",
                 Some(&glib::Variant::from((
                     "idle:sleep",
-                    "Pocket 3 KVM",
+                    "Pocket 3 KVM Viewer",
                     "Focused live KVM capture",
                     "block",
                 ))),
@@ -53,12 +53,12 @@ mod tests {
             .arg("--list")
             .output()
             .expect("systemd-inhibit must be installed");
-        assert!(String::from_utf8_lossy(&inhibitors.stdout).contains("Pocket 3 KVM"));
+        assert!(String::from_utf8_lossy(&inhibitors.stdout).contains("Pocket 3 KVM Viewer"));
         drop(lock);
         let inhibitors = std::process::Command::new("systemd-inhibit")
             .arg("--list")
             .output()
             .expect("systemd-inhibit must be installed");
-        assert!(!String::from_utf8_lossy(&inhibitors.stdout).contains("Pocket 3 KVM"));
+        assert!(!String::from_utf8_lossy(&inhibitors.stdout).contains("Pocket 3 KVM Viewer"));
     }
 }

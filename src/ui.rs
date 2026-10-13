@@ -341,7 +341,7 @@ fn watch_video_nodes(
 pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     let window = gtk::ApplicationWindow::builder()
         .application(app)
-        .title("Pocket 3 KVM")
+        .title("Pocket 3 KVM Viewer")
         .default_width(960)
         .default_height(540)
         .build();

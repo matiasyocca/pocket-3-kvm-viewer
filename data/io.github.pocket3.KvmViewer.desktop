@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Pocket 3 KVM Viewer
+Comment=View video from the GPD Pocket 3 KVM module
+Exec=pocket3-kvm-viewer
+Icon=video-display
+Terminal=false
+Categories=System;Video;
+StartupWMClass=io.github.pocket3.KvmViewer

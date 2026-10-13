@@ -1,5 +1,5 @@
 [package]
-name = "gpd-pocket3-kvm"
+name = "pocket3-kvm-viewer"
 version = "0.1.0"
 edition = "2021"
 

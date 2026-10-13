@@ -11,7 +11,7 @@ pub fn parse_args(args: &[String]) -> Result<Option<String>, &'static str> {
     match args {
         [_] => Ok(None),
         [_, flag, device] if flag == "--device" && valid_device(device) => Ok(Some(device.clone())),
-        _ => Err("Usage: gpd-pocket3-kvm [--device /dev/videoN]"),
+        _ => Err("Usage: pocket3-kvm-viewer [--device /dev/videoN]"),
     }
 }
 
@@ -43,6 +43,9 @@ mod tests {
         );
         assert!(parse_args(&["app".into(), "--device".into(), "/tmp/video2".into()]).is_err());
         assert!(parse_args(&["app".into(), "--device".into()]).is_err());
-        assert!(parse_args(&["app".into(), "--unknown".into()]).is_err());
+        assert_eq!(
+            parse_args(&["app".into(), "--unknown".into()]),
+            Err("Usage: pocket3-kvm-viewer [--device /dev/videoN]")
+        );
     }
 }
