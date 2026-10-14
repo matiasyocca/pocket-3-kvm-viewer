@@ -31,6 +31,19 @@ cargo run --release
 
 Alternatively run one command without entering a shell: `nix develop -c cargo run --release`. The Nix shell supplies the same native libraries that a regular distribution installs as packages. The Rust binary has runtime GTK4/GStreamer shared-library dependencies; it is not a universal static binary. Builds on macOS/Windows are not supported: the capture source here is Linux V4L2.
 
+## Tagged Linux binary releases
+
+Pushing a tag matching the version in `Cargo.toml` (for example, `v0.1.0`) triggers the GitHub release workflow. Commit and push the workflow first, then create and push the tag with `git tag v0.1.0 && git push origin v0.1.0` (update the version/tag for later releases). It runs formatting, tests and Clippy, builds the default-feature executable on Ubuntu 24.04 x86_64, and uploads a `.tar.gz` binary plus a SHA-256 checksum to the GitHub release. The default build is intended for GTK 4.10+; it does not enable the optional `native-yuv` or `background-throttle` features. A failed workflow does not publish a release. No aarch64 release binary is built yet.
+
+This archive is **not self-contained**. On the target Linux machine, install GTK4 4.10+, GStreamer 1.0 core/base libraries and the GStreamer base/good runtime plugins. The GTK4 paintable sink is built into the executable; no separate GTK4 GStreamer plugin is required. For example, the Ubuntu 24.04 runtime packages are:
+
+```sh
+sudo apt install libgtk-4-1 libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+```
+
+Download the archive for your tag from GitHub Releases, verify the checksum with `sha256sum -c <archive-name>.sha256`, extract it with `tar -xzf <archive-name>.tar.gz`, and run `./pocket3-kvm-viewer`. The binary is built against Ubuntu 24.04's glibc and other shared libraries: it is not guaranteed to run on older distributions even if they offer GTK4. For other distributions, check their equivalent runtime packages and shared-library compatibility, or build from source using the instructions above. On NixOS, use the wrapped Nix package below rather than this conventional-distribution binary. A readable V4L2 capture node and a graphical session are still required at runtime.
+
 ## Native YUV rendering
 
 On GTK 4.20 or newer, use `cargo run --release --features native-yuv`. This enables the sink's native YUV texture support, allowing compatible capture frames to bypass CPU RGB conversion without reducing resolution or frame rate. Ordinary Cargo builds retain the older-GTK software-conversion compatibility path. The Nix package explicitly enables `native-yuv` using its pinned GTK version. With a display available, verify capability using `cargo test --locked --features native-yuv capture::tests::sink_accepts_native_yuy2 -- --ignored --exact`.
