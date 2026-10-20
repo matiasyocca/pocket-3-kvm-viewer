@@ -9,7 +9,7 @@
       packages = forSystems (pkgs: rec {
         pocket3-kvm-viewer = pkgs.rustPlatform.buildRustPackage {
           pname = "pocket3-kvm-viewer";
-          version = "0.1.0";
+          version = "0.2.0";
           src = self;
           cargoLock.lockFile = ./Cargo.lock;
           buildFeatures = [ "native-yuv" "background-throttle" ];

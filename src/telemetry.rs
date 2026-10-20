@@ -1,4 +1,8 @@
 //! Opt-in diagnostic instrumentation. Not compiled into ordinary viewer builds.
+//!
+//! Count buffers reaching the sink, not compositor presentation or fresh HDMI
+//! content. Negotiated caps describe the stream; neither caps nor this counter
+//! measure end-to-end latency, total power, or zero-copy transport.
 use gstreamer::{self as gst, prelude::*};
 use gtk4::glib;
 use std::{

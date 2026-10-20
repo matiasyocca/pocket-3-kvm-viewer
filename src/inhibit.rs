@@ -1,8 +1,14 @@
+//! RAII ownership of a systemd-logind idle/sleep inhibitor.
+//!
+//! The lock is represented by an owned descriptor, not a separate release RPC.
+//! The UI decides when focused, actually Playing capture warrants holding it;
+//! failure to acquire it is reported without making video capture depend on logind.
+
 use std::os::fd::OwnedFd;
 
 use gtk4::{gio, glib, prelude::UnixFDListExtManual};
 
-// logind's lock exists as long as this descriptor stays open; Drop closes it.
+/// Hold logind's lock until this value is dropped and its descriptor closes.
 pub struct SleepInhibitor {
     _fd: OwnedFd,
 }

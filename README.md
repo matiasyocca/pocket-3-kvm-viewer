@@ -1,100 +1,121 @@
 # Pocket 3 KVM Viewer
 
-A Linux-first Rust/GTK4 application for the optional GPD Pocket 3 KVM module's HDMI-IN capture. The module, not this application, redirects the built-in keyboard and touchpad when its USB cable is connected to a target. There is no keyboard injection or privileged helper.
+A Linux viewer for the optional GPD Pocket 3 KVM module's HDMI input. See the target computer's video in a window or full screen, with touchscreen-friendly controls.
 
-## Build
+The module itself forwards the Pocket 3's keyboard and touchpad when its USB cable is connected to the target. The viewer does not inject input or require a privileged helper.
 
-Rust 1.92 or newer (required by `gst-plugin-gtk4` 0.15), Cargo, `pkg-config`, GTK4 4.10+ headers, GStreamer core/base development headers, and GStreamer base/good runtime plugins are required. Build on either x86_64 or aarch64 Linux. The GTK4 paintable sink is compiled and registered from the Rust dependency; it is not necessary to install a separate system GTK4 GStreamer plugin.
+## Install and launch
 
-On a conventional distribution, install the system dependencies first. Example package names (check your distribution's actual versions):
+You need the optional KVM module, a Linux graphical session, and permission to read its `/dev/videoN` capture device. Windows and macOS are not supported.
 
-- Debian/Ubuntu: `libgtk-4-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good pkg-config build-essential`
-- Fedora: `gtk4-devel gstreamer1-devel gstreamer1-plugins-base-devel gstreamer1-plugins-good pkgconf-pkg-config gcc`
-- Arch Linux: `gtk4 gstreamer gst-plugins-base gst-plugins-good pkgconf base-devel`
+### Linux release binary
 
-Then run:
+Download the x86_64 archive and its matching checksum from [GitHub Releases](https://github.com/matiasyocca/pocket-3-kvm-viewer/releases). No aarch64 release binary is provided yet.
 
-```sh
-pkg-config --modversion gtk4 gstreamer-1.0 gstreamer-video-1.0
-cargo test
-cargo build --release
-./target/release/pocket3-kvm-viewer
-```
-
-For Nix with flakes enabled, use the pinned development shell (x86_64-linux and aarch64-linux):
-
-```sh
-nix develop
-cargo test
-cargo run --release
-```
-
-Alternatively run one command without entering a shell: `nix develop -c cargo run --release`. The Nix shell supplies the same native libraries that a regular distribution installs as packages. The Rust binary has runtime GTK4/GStreamer shared-library dependencies; it is not a universal static binary. Builds on macOS/Windows are not supported: the capture source here is Linux V4L2.
-
-## Tagged Linux binary releases
-
-Pushing a tag matching the version in `Cargo.toml` (for example, `v0.1.0`) triggers the GitHub release workflow. Commit and push the workflow first, then create and push the tag with `git tag v0.1.0 && git push origin v0.1.0` (update the version/tag for later releases). It runs formatting, tests and Clippy, builds the default-feature executable on Ubuntu 24.04 x86_64, and uploads a `.tar.gz` binary plus a SHA-256 checksum to the GitHub release. The default build is intended for GTK 4.10+; it does not enable the optional `native-yuv` or `background-throttle` features. A failed workflow does not publish a release. No aarch64 release binary is built yet.
-
-This archive is **not self-contained**. On the target Linux machine, install GTK4 4.10+, GStreamer 1.0 core/base libraries and the GStreamer base/good runtime plugins. The GTK4 paintable sink is built into the executable; no separate GTK4 GStreamer plugin is required. For example, the Ubuntu 24.04 runtime packages are:
+The archive is **not self-contained**: install GTK4 4.10+, GStreamer core/base libraries, and the GStreamer base/good and ALSA runtime plugins. On Ubuntu 24.04:
 
 ```sh
 sudo apt install libgtk-4-1 libgstreamer1.0-0 libgstreamer-plugins-base1.0-0 \
-  gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+  gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-alsa
 ```
 
-Download the archive for your tag from GitHub Releases, verify the checksum with `sha256sum -c <archive-name>.sha256`, extract it with `tar -xzf <archive-name>.tar.gz`, and run `./pocket3-kvm-viewer`. The binary is built against Ubuntu 24.04's glibc and other shared libraries: it is not guaranteed to run on older distributions even if they offer GTK4. For other distributions, check their equivalent runtime packages and shared-library compatibility, or build from source using the instructions above. On NixOS, use the wrapped Nix package below rather than this conventional-distribution binary. A readable V4L2 capture node and a graphical session are still required at runtime.
+In the download directory, substitute the actual archive name:
 
-## Native YUV rendering
+```sh
+sha256sum -c <archive-name>.sha256
+tar -xzf <archive-name>.tar.gz
+./pocket3-kvm-viewer
+```
 
-On GTK 4.20 or newer, use `cargo run --release --features native-yuv`. This enables the sink's native YUV texture support, allowing compatible capture frames to bypass CPU RGB conversion without reducing resolution or frame rate. Ordinary Cargo builds retain the older-GTK software-conversion compatibility path. The Nix package explicitly enables `native-yuv` using its pinned GTK version. With a display available, verify capability using `cargo test --locked --features native-yuv capture::tests::sink_accepts_native_yuy2 -- --ignored --exact`.
+Release binaries are built on Ubuntu 24.04 and are not guaranteed to work on older distributions. On other distributions, install equivalent runtime packages and check library compatibility, or [build from source](docs/DEVELOPMENT.md#build-from-source). No separate GTK4 GStreamer sink plugin is needed.
 
-The optional `benchmark` feature adds frame-delivery/caps diagnostics to stderr; it is not enabled in normal builds or the Nix package. Reproducible CPU/RSS comparisons use `scripts/benchmark.py`; measurements and limitations are in `docs/PERFORMANCE.md`. Sink-delivery FPS is not the same as measured panel presentation rate or total power consumption.
+### Nix and NixOS
 
-## Visibility-driven capture suspension
+From a checkout with flakes enabled:
 
-On GTK 4.12 or newer, `cargo run --release --features background-throttle` pauses capture when the compositor reports the window suspended/minimized or GTK unmaps it. Combine both optimizations on GTK 4.20+: `cargo run --release --features native-yuv,background-throttle`. The Nix package enables both features. Ordinary Cargo builds keep the GTK 4.10-compatible behavior.
+```sh
+nix run .
+```
 
-The controller is event-driven: losing focus or leaving the pointer stationary does not pause visible video. Showing the window resumes the same pipeline; manual Stop remains stopped until Start. A compositor that does not report occlusion will not gain automatic occlusion-based suspension. Paused capture retains its video node and last image for quick return; Stop releases the node. Sleep inhibition requires focused, actually Playing capture, not merely an allocated paused pipeline.
+To build the wrapped package: `nix build .#pocket3-kvm-viewer`. It supplies GTK/GStreamer runtime dependencies and installs the `pocket3-kvm-viewer` command and a “Pocket 3 KVM Viewer” desktop entry. Use this package on NixOS rather than the conventional Linux release archive.
 
-## Nix package and NixOS
-
-`nix build .#pocket3-kvm-viewer` builds the installable package (also available as `.#default`); `nix run .` launches it. The package installs the `pocket3-kvm-viewer` command and a desktop entry named “Pocket 3 KVM Viewer”. GTK and the necessary GStreamer runtime plugins are wrapped into the Nix package.
-
-After publishing this repository, add it as an input to your NixOS flake (substitute the actual GitHub path):
+To install through your NixOS flake:
 
 ```nix
-# In your flake's inputs:
-pocket3-kvm-viewer.url = "github:YOUR_USER/YOUR_REPO";
+# Add to your flake inputs:
+pocket3-kvm-viewer.url = "github:matiasyocca/pocket-3-kvm-viewer";
 
-# In your nixosSystem call, pass inputs to modules if you do not already:
+# Pass inputs to your nixosSystem modules if not already done:
 specialArgs = { inherit inputs; };
 
-# In a NixOS module taking { pkgs, inputs, ... }:
+# In a module taking { pkgs, inputs, ... }:
 environment.systemPackages = [
   inputs.pocket3-kvm-viewer.packages.${pkgs.stdenv.hostPlatform.system}.default
 ];
 ```
 
-The explicit `pocket3-kvm-viewer` package attribute and `default` point to the same derivation. Only x86_64-linux has been built here; aarch64-linux is declared but has not been build-tested.
+The flake declares x86_64-linux and aarch64-linux; only x86_64-linux has been build-tested. Source-build requirements and optional build features are in the [development guide](docs/DEVELOPMENT.md).
 
-## Run
+## Connect the target
 
-Install the optional module. Connect the target's HDMI OUT to the module's HDMI IN (not the Pocket 3's own HDMI OUT). Launch the app: it finds the observed module USB ID `3188:1000`, excludes the metadata-only node, and immediately starts capture if there is exactly one match. Video fills the window under a small overlay with Stop/Start and Full screen controls; there is no device dropdown, Refresh button, or persistent status footer. Double-click the video area with the primary button to enter or leave full screen; the overlay Full screen button remains available for touch. The overlay controls and pointer hide after three seconds without pointer motion while the pointer is over the viewer; move the pointer or touch the screen to show the controls and restore the pointer. If the controls were hidden, the first touch reveals them and a second touch can press a button. Start rescans devices and resumes automatic capture after a manual pause. When no module is present, the app waits for a matching `/dev/videoN` to appear and starts capture automatically after a short debounce; unplugging the active module stops capture, releases its sleep inhibitor, and waits to reconnect. Stop intentionally pauses this automation (and releases the exclusive video node) until Start is tapped again. A pipeline error retires failed capture, releases its resources, and leaves Start available to retry; manual Stop still disables automatic reconnect. Device monitoring uses GIO's `/dev` directory watcher; if monitoring is unavailable, manual Start remains the fallback. Errors and no-device messages appear over the video area only when needed. Connect the target's USB port to the module's USB IN to use hardware keyboard/touchpad forwarding; use the touchscreen to operate the controls if the physical keyboard/touchpad now control the target.
+1. Install the optional KVM module.
+2. Connect the target's HDMI OUT to the module's HDMI IN—not the Pocket 3's own HDMI OUT.
+3. Launch the viewer. It starts automatically when exactly one supported module is found, or waits for you to connect it.
+4. Connect the target's USB port to the module's USB IN for hardware keyboard/touchpad forwarding. Use the Pocket 3's touchscreen to operate the viewer while its keyboard and touchpad control the target.
 
-Video-node numbering is not stable. `v4l2-ctl --list-devices`, `v4l2-ctl -d /dev/videoX --all`, or `/sys/class/video4linux/video*/name` can identify the device when needed. The chosen `/dev/videoX` must be readable by the current user. If capture fails, check permissions and `GST_DEBUG=2 cargo run` before changing system permissions. Never run the GUI as root just to access a video node.
+## Controls
 
-While capture is running and this window has focus, the viewer asks `systemd-logind` over the system D-Bus for an `idle:sleep` blocking inhibitor. This is independent of the window manager and desktop environment; `systemd-inhibit --list` should show `Pocket 3 KVM Viewer` while the window is focused. Focus loss, Stop, a pipeline error, window close, or process exit releases the inhibitor. If logind is unavailable or denies it, capture still works and the failure is printed to stderr. This only applies to power management honoring logind inhibitors; privileged forced suspend, lid handling configured to ignore inhibitors, or compositor-specific idle actions may still occur. Currently “source connected” means the UVC capture pipeline started successfully; the capture device does not expose a verified HDMI-signal-present indication, so an attached module without a working HDMI signal may also hold the lock until Stop or an error.
+- **Stop / Start:** Stop releases the capture device and disables automatic reconnect until you press Start. Start searches again and resumes capture.
+- **Full screen:** Use the overlay button or double-click the video with the primary pointer button.
+- **Hidden controls:** Controls and the pointer hide after three seconds without pointer movement over the viewer. Move the pointer or touch the screen to reveal them. If hidden, the first touch reveals the controls; a second touch can activate a button.
+- **Reconnect:** With automatic capture enabled, unplugging the module stops capture; reconnecting it starts capture again. If device monitoring is unavailable, use Start to retry.
 
-For a module revision with a different USB ID, or if multiple matching devices are attached, `cargo run --release -- --device /dev/video2` overrides discovery and starts the specified node immediately; substitute the actual device path. An invalid argument exits with a usage message.
+Video preserves its aspect ratio instead of cropping the target's screen. Errors and connection messages appear over the video when needed.
 
-## Tests
+The Nix package pauses capture when GTK/the compositor reports the window hidden, suspended, or minimized, then resumes when shown. It retains the device and last image while paused; use Stop to release the device. Losing focus alone does not pause video. Compositors that do not report occlusion cannot trigger occlusion-based suspension. The release archive and ordinary Cargo builds do not enable this optional behavior.
 
-`cargo fmt --check && cargo test && cargo clippy --all-targets -- -D warnings && cargo build --release`. On a logind host with `systemd-inhibit` installed, run `cargo test focused_capture_holds_and_releases_a_logind_lock -- --ignored` to verify acquisition and release of a real blocking lock. With an attached module, verify discovery using `KVM_EXPECTED_DEVICE=/dev/video2 cargo test finds_attached_kvm_capture_node -- --ignored` (replace the path). After opening the GUI on real hardware, check `systemd-inhibit --list` while focused, unfocused, and after Stop; test live target BIOS/desktop video, fullscreen/exit, and USB input switching and return. For hot-plug, launch once with the KVM unplugged, attach it and confirm capture starts automatically; unplug and replug during capture and confirm it resumes. Tap Stop, unplug/replug and confirm it stays paused; tap Start and confirm it resumes. A synthetic directory-monitor test checks that GIO reports video-node arrival and removal without touching `/dev`. Measure latency/CPU and negotiated formats on the target machine rather than promising a particular frame rate. The pipeline favors fresh frames by using a two-buffer leaky queue and `sync=false`.
+## HDMI audio
+
+Optional audio monitoring is available for the supported USB `3188:1000` KVM module. It plays the module's captured HDMI audio through your computer's normal audio output. Start video first, then tap the speaker icon to unmute.
+
+Each launch starts muted at 25% viewer volume. The slider adjusts only this viewer, from 0 to 100%; moving it above zero unmutes, and zero mutes. Muting preserves a nonzero volume; unmuting from zero restores 25%. Your choice is retained across Stop/Start and reconnects until you close the app.
+
+Audio stops on mute, Stop, capture failure, disconnect and close. In builds with background suspension enabled, audio also stops while video is suspended and resumes with video. Focus loss alone does not stop it.
+
+A warning icon beside the slider means audio is unavailable; its tooltip explains why. Video continues independently. If the module's audio interface appears late, the viewer retries briefly; otherwise mute then unmute to retry. A different recorder or the audio server may already be holding the module's capture device. Do not change your system microphone or disable your audio server to work around this.
+
+Audio uses the module's explicitly associated ALSA capture interface, never the default microphone. Other video devices selected with `--device` do not automatically gain audio support. Monitoring is not a synchronized A/V player; some audio/video offset may be noticeable.
+
+## Sleep prevention
+
+While capture is actually playing and the viewer has focus, it asks systemd-logind to prevent idle/sleep. Losing focus, stopping capture, a capture error, or closing the viewer releases the request. If logind is unavailable or denies it, video still works and a warning is printed to stderr.
+
+This only affects power management that honors logind inhibitors: forced suspend, some lid policies, and compositor-specific idle actions may still occur. The viewer cannot verify that an HDMI signal is present; a running capture module without a working target signal may still inhibit sleep.
+
+## Troubleshooting
+
+- **No device or multiple devices:** The supported module is detected automatically. For a different module revision or multiple capture devices, select a node explicitly:
+
+  ```sh
+  pocket3-kvm-viewer --device /dev/video2
+  ```
+
+  Replace the path with your actual capture node. Video-node numbers can change; `v4l2-ctl --list-devices` and `v4l2-ctl -d /dev/videoX --all` help identify it.
+
+- **Capture fails:** Check that the selected node is readable by your user and is not held by another viewer. Do not run the GUI as root just to access a video node. Run `GST_DEBUG=2 pocket3-kvm-viewer` from a terminal for diagnostics; for an extracted archive, use `GST_DEBUG=2 ./pocket3-kvm-viewer`.
+- **Sleep prevention is unexpected:** Check `systemd-inhibit --list` while capture is playing and the viewer is focused. Stop capture to release the viewer's request.
 
 ## Limitations
 
-No audio, recording, automatic hot-plug launch, firmware controls, remote/IP KVM, or software input forwarding. Alternate capture nodes require the `--device` argument. The video retains its original aspect ratio; if the window has a different aspect ratio, empty margins may appear rather than cropping BIOS content. Windows and macOS would require different capture backends and are not delivered by this release.
+No recording, automatic application launch on hot-plug, firmware controls, remote/IP KVM, or software input forwarding. Alternate capture nodes require `--device`.
 
-## Verified hardware (partial)
+Display latency, total power consumption, touchscreen behavior, and USB input forwarding have not been fully validated. See the [hardware validation notes](docs/HARDWARE.md) for the distinction between observed results and outstanding checks.
 
-On the implementation host, DMI reported vendor GPD and product `G1621-02` with a Wayland/Hyprland session. `v4l2-ctl --list-devices` listed an `HDMI Capture: HDMI Capture` UVC device at `/dev/video2` plus a metadata node at `/dev/video3`. Sysfs reports `3188:1000`, with V4L2 index 0 for `/dev/video2` and index 1 for `/dev/video3`. The hardware discovery test passed with `/dev/video2`. That node advertised YUYV 1920×1080 at 30 or 60 fps, and a 10-buffer GStreamer V4L2-to-fakesink capture completed without an error. The native viewer auto-opened `/dev/video2`; GStreamer negotiated YUY2 1920×1080 60/1, its GTK4 sink created frames repeatedly, and a scoped screenshot showed a target NixOS boot console rendered in the video pane with overlay controls and no footer/dropdown/checkbox. Display latency, USB forwarding, and touchscreen behavior remain unverified.
+## Contributor documentation
+
+- [Development, build features, tests, and releases](docs/DEVELOPMENT.md)
+- [Architecture navigation](docs/ARCHITECTURE.md)
+- [Hardware evidence and manual validation](docs/HARDWARE.md)
+- [Performance measurements and optimization decisions](docs/PERFORMANCE.md)
+
+Implementation behavior and invariants live in the code and tests; this README is the user guide.

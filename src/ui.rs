@@ -1,3 +1,16 @@
+//! GTK widgets and event-driven ownership of capture, reconnect, and inhibition.
+//!
+//! Manual Stop intent is separate from pipeline state: a visibility pause retains
+//! the pipeline/node and may resume, while Stop retires it and blocks automatic
+//! reconnect until Start. Focus controls inhibition, not visible video playback.
+//!
+//! `Running` owns the pipeline and its bus-watch guard. Async error retirement is
+//! deferred out of bus dispatch and checks pipeline identity again, so an old error
+//! cannot retire a replacement capture. Requested and actual GStreamer states are
+//! tracked separately because transitions can complete asynchronously. The tests
+//! below cover these policies and synthetic lifecycle failures without requiring
+//! a physical capture module; they do not establish all physical/UI behavior.
+
 use std::{
     cell::{Cell, RefCell},
     path::{Path, PathBuf},
@@ -12,13 +25,14 @@ use gtk::prelude::*;
 use gtk::{gio, glib};
 use gtk4 as gtk;
 
-use crate::{capture, device};
+use crate::{audio_controls::AudioControls, capture, device};
 
 struct Running {
     path: PathBuf,
     pipeline: gst::Pipeline,
     requested_state: Cell<gst::State>,
     watch: gst::bus::BusWatchGuard,
+    audio: Option<Rc<AudioControls>>,
 }
 
 type ActiveCapture = Rc<RefCell<Option<Running>>>;
@@ -106,6 +120,23 @@ fn cursor_name_for_controls(visible: bool) -> Option<&'static str> {
     }
 }
 
+fn controls_in_use(widget: &gtk::Widget) -> bool {
+    if widget
+        .state_flags()
+        .intersects(gtk::StateFlags::ACTIVE | gtk::StateFlags::FOCUS_VISIBLE)
+    {
+        return true;
+    }
+    let mut child = widget.first_child();
+    while let Some(widget) = child {
+        if controls_in_use(&widget) {
+            return true;
+        }
+        child = widget.next_sibling();
+    }
+    false
+}
+
 fn reset_controls_timer(
     controls: &gtk::Box,
     overlay: &gtk::Overlay,
@@ -122,6 +153,10 @@ fn reset_controls_timer(
     let id = glib::timeout_add_local_once(Duration::from_secs(3), move || {
         pending_for_timeout.borrow_mut().take();
         if let (Some(controls), Some(overlay)) = (weak_controls.upgrade(), weak_overlay.upgrade()) {
+            if controls_in_use(controls.upcast_ref()) {
+                reset_controls_timer(&controls, &overlay, &pending_for_timeout);
+                return;
+            }
             controls.set_visible(false);
             overlay.set_cursor_from_name(cursor_name_for_controls(false));
         }
@@ -183,15 +218,37 @@ fn stop(
     button.set_label("Start");
 }
 
+/// Release failed/stopped capture resources without changing manual Start/Stop intent.
+///
+/// Disconnect the bus watch before requesting Null; callers inside bus dispatch
+/// must defer retirement until that callback has returned.
 fn retire_capture(active: &ActiveCapture, picture: &gtk::Picture, inhibitor: &InhibitController) {
     inhibitor.set_capture_active(false);
     if let Some(running) = active.borrow_mut().take() {
+        if let Some(audio) = &running.audio {
+            audio.detach();
+        }
         drop(running.watch);
         if let Err(err) = running.pipeline.set_state(gst::State::Null) {
             eprintln!("Could not stop capture: {err}");
         }
     }
     picture.set_paintable(None::<&gtk::gdk::Paintable>);
+}
+
+fn attach_audio(active: &ActiveCapture, audio: &Rc<AudioControls>) {
+    let mut current = active.borrow_mut();
+    let running = current
+        .as_mut()
+        .expect("successful video startup owns Running");
+    running.audio = Some(audio.clone());
+    // A synchronous Playing transition needs no later bus message to open audio.
+    audio.attach(&running.path, video_is_playing(running));
+}
+
+fn video_is_playing(running: &Running) -> bool {
+    running.requested_state.get() == gst::State::Playing
+        && running.pipeline.current_state() == gst::State::Playing
 }
 
 // Track the requested state as well as actual state: async transitions must not
@@ -206,15 +263,20 @@ fn request_pipeline_state(
     }
     running.requested_state.set(target);
     if target != gst::State::Playing {
+        if let Some(audio) = &running.audio {
+            audio.set_video_playing(false);
+        }
         inhibitor.set_capture_active(false);
     }
     running
         .pipeline
         .set_state(target)
         .map_err(|err| format!("Cannot change capture state: {err}"))?;
-    inhibitor.set_capture_active(
-        target == gst::State::Playing && running.pipeline.current_state() == gst::State::Playing,
-    );
+    let playing = video_is_playing(running);
+    inhibitor.set_capture_active(playing);
+    if let Some(audio) = &running.audio {
+        audio.set_video_playing(playing);
+    }
     Ok(true)
 }
 
@@ -381,6 +443,7 @@ fn start_capture(
     message: &gtk::Label,
     button: &gtk::Button,
     inhibitor: &Rc<InhibitController>,
+    audio: &Rc<AudioControls>,
 ) -> Result<(), String> {
     let capture_path = path;
     let path = path.to_string_lossy();
@@ -419,7 +482,9 @@ fn start_capture(
                 gst::State::Playing
             }
         },
-    )
+    )?;
+    attach_audio(active, audio);
+    Ok(())
 }
 
 // Keep pipeline lifecycle independent of the hardware source and GTK video sink.
@@ -453,10 +518,11 @@ fn start_pipeline(
                         running.pipeline.bus().as_ref() == Some(bus)
                             && event.src() == Some(running.pipeline.upcast_ref())
                     }) {
-                        error_inhibitor.set_capture_active(
-                            running.pipeline.current_state() == gst::State::Playing
-                                && running.requested_state.get() == gst::State::Playing,
-                        );
+                        let playing = video_is_playing(running);
+                        error_inhibitor.set_capture_active(playing);
+                        if let Some(audio) = &running.audio {
+                            audio.set_video_playing(playing);
+                        }
                     }
                 }
             }
@@ -505,6 +571,7 @@ fn start_pipeline(
         pipeline: pipeline.clone(),
         requested_state: Cell::new(gst::State::Null),
         watch,
+        audio: None,
     });
     let result = request_pipeline_state(active.borrow().as_ref().unwrap(), target, inhibitor);
     if let Err(err) = result {
@@ -524,13 +591,14 @@ fn try_start_capture(
     message: &gtk::Label,
     button: &gtk::Button,
     inhibitor: &Rc<InhibitController>,
+    audio: &Rc<AudioControls>,
 ) {
     let result = device::resolve_capture_node(
         Path::new("/dev"),
         Path::new("/sys/class/video4linux"),
         explicit,
     )
-    .and_then(|path| start_capture(&path, active, picture, message, button, inhibitor));
+    .and_then(|path| start_capture(&path, active, picture, message, button, inhibitor, audio));
     if let Err(err) = result {
         notice(message, &err);
     }
@@ -547,13 +615,14 @@ fn watch_video_nodes(
         &Rc<InhibitController>,
     ),
     explicit: Option<String>,
+    audio: &Rc<AudioControls>,
 ) -> Result<(), glib::Error> {
     let (picture, message, button, inhibitor) = widgets;
     let monitor = gio::File::for_path("/dev")
         .monitor_directory(gio::FileMonitorFlags::NONE, gio::Cancellable::NONE)?;
     let pending = Rc::new(RefCell::new(None::<glib::SourceId>));
     {
-        let (window, active, preference, picture, message, button, inhibitor, pending) = (
+        let (window, active, preference, picture, message, button, inhibitor, pending, audio) = (
             window.downgrade(),
             active.clone(),
             preference.clone(),
@@ -562,11 +631,10 @@ fn watch_video_nodes(
             button.clone(),
             inhibitor.clone(),
             pending.clone(),
+            audio.clone(),
         );
         monitor.connect_changed(move |_, file, _, event| {
-            let Some(path) = file.path() else {
-                return;
-            };
+            let Some(path) = file.path() else { return };
             if !is_video_node(&path) {
                 return;
             }
@@ -592,7 +660,7 @@ fn watch_video_nodes(
             if let Some(id) = pending.borrow_mut().take() {
                 id.remove();
             }
-            let (window, active, preference, picture, message, button, inhibitor) = (
+            let (window, active, preference, picture, message, button, inhibitor, audio) = (
                 window.clone(),
                 active.clone(),
                 preference.clone(),
@@ -600,6 +668,7 @@ fn watch_video_nodes(
                 message.clone(),
                 button.clone(),
                 inhibitor.clone(),
+                audio.clone(),
             );
             let pending_for_timeout = pending.clone();
             let explicit = explicit.clone();
@@ -615,6 +684,7 @@ fn watch_video_nodes(
                         &message,
                         &button,
                         &inhibitor,
+                        &audio,
                     );
                 }
             });
@@ -629,6 +699,59 @@ fn watch_video_nodes(
         glib::Propagation::Proceed
     });
     Ok(())
+}
+
+fn connect_start_button(
+    start: &gtk::Button,
+    active: &ActiveCapture,
+    preference: &Rc<Cell<CapturePreference>>,
+    widgets: (&gtk::Picture, &gtk::Label, &Rc<InhibitController>),
+    explicit: Option<String>,
+    audio: &Rc<AudioControls>,
+) {
+    let (picture, message, inhibitor) = widgets;
+    let (active, preference, picture, message, inhibitor, audio) = (
+        active.clone(),
+        preference.clone(),
+        picture.clone(),
+        message.clone(),
+        inhibitor.clone(),
+        audio.clone(),
+    );
+    start.connect_clicked(move |button| {
+        if active.borrow().is_some() {
+            preference.set(CapturePreference::Paused);
+            stop(&active, &picture, button, &inhibitor);
+            notice(&message, "Paused. Tap Start to resume automatic capture.");
+        } else {
+            preference.set(CapturePreference::Automatic);
+            try_start_capture(
+                explicit.as_deref(),
+                &active,
+                &picture,
+                &message,
+                button,
+                &inhibitor,
+                &audio,
+            );
+        }
+    });
+}
+
+fn connect_fullscreen_button(button: &gtk::Button, window: &gtk::ApplicationWindow) {
+    let window = window.downgrade();
+    button.connect_clicked(move |button| {
+        let Some(window) = window.upgrade() else {
+            return;
+        };
+        if window.is_fullscreen() {
+            window.unfullscreen();
+            button.set_label("Full screen");
+        } else {
+            window.fullscreen();
+            button.set_label("Exit full screen");
+        }
+    });
 }
 
 pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
@@ -665,9 +788,11 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     controls.set_valign(gtk::Align::Start);
     controls.set_margin_top(8);
     controls.set_margin_end(8);
+    let (audio_widgets, audio) = AudioControls::new();
     let start = gtk::Button::with_label("Start");
     let fullscreen = gtk::Button::with_label("Full screen");
     controls.append(&start);
+    controls.append(&audio_widgets);
     controls.append(&fullscreen);
     overlay.add_overlay(&controls);
 
@@ -714,6 +839,7 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
         &preference,
         (&picture, &message, &start, &inhibitor),
         explicit.clone(),
+        &audio,
     )
     .err();
     if let Some(err) = &monitor_error {
@@ -725,49 +851,16 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
         window.connect_notify_local(Some("is-active"), move |_, _| inhibitor.update());
     }
 
-    {
-        let (active, picture, message, button, inhibitor, preference) = (
-            active.clone(),
-            picture.clone(),
-            message.clone(),
-            start.clone(),
-            inhibitor.clone(),
-            preference.clone(),
-        );
-        let explicit = explicit.clone();
-        start.connect_clicked(move |_| {
-            if active.borrow().is_some() {
-                preference.set(CapturePreference::Paused);
-                stop(&active, &picture, &button, &inhibitor);
-                notice(&message, "Paused. Tap Start to resume automatic capture.");
-            } else {
-                preference.set(CapturePreference::Automatic);
-                try_start_capture(
-                    explicit.as_deref(),
-                    &active,
-                    &picture,
-                    &message,
-                    &button,
-                    &inhibitor,
-                );
-            }
-        });
-    }
-    {
-        let (window, button) = (window.downgrade(), fullscreen.clone());
-        fullscreen.connect_clicked(move |_| {
-            let Some(window) = window.upgrade() else {
-                return;
-            };
-            if window.is_fullscreen() {
-                window.unfullscreen();
-                button.set_label("Full screen");
-            } else {
-                window.fullscreen();
-                button.set_label("Exit full screen");
-            }
-        });
-    }
+    connect_start_button(
+        &start,
+        &active,
+        &preference,
+        (&picture, &message, &inhibitor),
+        explicit.clone(),
+        &audio,
+    );
+    connect_fullscreen_button(&fullscreen, &window);
+
     let double_click = gtk::GestureClick::new();
     double_click.set_button(1); // Primary mouse/touchpad button only.
     {
@@ -780,17 +873,20 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
     }
     picture.add_controller(double_click);
     {
-        let (active, picture, button, inhibitor) = (
+        let (active, picture, button, inhibitor, audio) = (
             active.clone(),
             picture.clone(),
             start.clone(),
             inhibitor.clone(),
+            audio.clone(),
         );
         window.connect_close_request(move |_| {
             stop(&active, &picture, &button, &inhibitor);
+            audio.detach(); // Also cancels a pending settling retry if no Running remains.
             glib::Propagation::Proceed
         });
     }
+
     #[cfg(feature = "background-throttle")]
     watch_capture_visibility(
         &window,
@@ -812,6 +908,260 @@ pub fn build(app: &gtk::Application, initial_device: Option<&str>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[ignore = "requires a GTK display; synthetic state messages, audio and video only"]
+    fn audio_attach_and_queued_states_require_requested_and_actual_playing() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let video =
+                test_pipeline("videotestsrc is-live=true ! fakesink async=false sync=false");
+            ui.start(&video).unwrap();
+            let (widgets, audio) = AudioControls::new_with_opener(crate::audio_controls::test_open);
+            let slider = widgets
+                .first_child()
+                .unwrap()
+                .next_sibling()
+                .unwrap()
+                .downcast::<gtk::Scale>()
+                .unwrap();
+            for (requested, actual) in [
+                (gst::State::Playing, gst::State::Paused),
+                (gst::State::Paused, gst::State::Playing),
+            ] {
+                video.set_state(actual).unwrap();
+                video.state(gst::ClockTime::from_seconds(2)).0.unwrap();
+                ui.active
+                    .borrow()
+                    .as_ref()
+                    .unwrap()
+                    .requested_state
+                    .set(requested);
+                attach_audio(&ui.active, &audio);
+                slider.set_value(50.0);
+                video
+                    .bus()
+                    .unwrap()
+                    .post(
+                        gst::message::StateChanged::builder(
+                            gst::State::Paused,
+                            gst::State::Playing,
+                            gst::State::VoidPending,
+                        )
+                        .src(&video)
+                        .build(),
+                    )
+                    .unwrap();
+                let done = Rc::new(Cell::new(false));
+                let dispatched = done.clone();
+                glib::idle_add_local_once(move || dispatched.set(true));
+                dispatch_until(|| done.get());
+                assert!(audio.current_pipeline().is_none(), "neither a requested transition nor a stale Playing payload proves actual playback");
+            }
+            request_pipeline_state(
+                ui.active.borrow().as_ref().unwrap(),
+                gst::State::Playing,
+                &ui.inhibitor,
+            )
+            .unwrap();
+            assert!(audio.current_pipeline().is_some(), "a synchronous Playing graph must reconcile immediately with retained unmute intent");
+            let graph = audio.current_pipeline().unwrap();
+            stop(&ui.active, &ui.picture, &ui.button, &ui.inhibitor);
+            assert_eq!(graph.current_state(), gst::State::Null);
+            assert!(audio.current_pipeline().is_none());
+            ui.start(&video).unwrap();
+            attach_audio(&ui.active, &audio);
+            assert!(
+                audio.current_pipeline().is_some(),
+                "Start/replug must retain the chosen unmute and gain intent"
+            );
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; synthetic widget state and real GLib timers only"]
+    fn volume_gesture_defers_real_hide_timeout() {
+        gtk::test_synced(|| {
+            let overlay = gtk::Overlay::new();
+            let controls = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+            let slider = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
+            controls.append(&slider);
+            overlay.add_overlay(&controls);
+            let pending = Rc::new(RefCell::new(None));
+            let mut observed = Vec::new();
+            for flags in [
+                gtk::StateFlags::ACTIVE,
+                gtk::StateFlags::FOCUS_VISIBLE,
+                gtk::StateFlags::empty(),
+            ] {
+                slider.unset_state_flags(gtk::StateFlags::ACTIVE | gtk::StateFlags::FOCUS_VISIBLE);
+                slider.set_state_flags(flags, false);
+                reset_controls_timer(&controls, &overlay, &pending);
+                let done = Rc::new(Cell::new(false));
+                let expired = done.clone();
+                glib::timeout_add_local_once(Duration::from_millis(3200), move || {
+                    expired.set(true)
+                });
+                let context = glib::MainContext::default();
+                while !done.get() {
+                    context.iteration(true);
+                }
+                observed.push((controls.is_visible(), overlay.cursor().is_none()));
+            }
+            if let Some(id) = pending.borrow_mut().take() {
+                id.remove();
+            }
+            assert_eq!(
+                observed,
+                [(true, true), (true, true), (false, false)],
+                "active drag and keyboard focus must survive the real hide timeout"
+            );
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; validates interaction policy, not physical touch delivery"]
+    fn volume_interaction_keeps_overlay_available() {
+        gtk::test_synced(|| {
+            let controls = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+            let slider = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 100.0, 1.0);
+            controls.append(&slider);
+            assert!(!controls_in_use(controls.upcast_ref()));
+            slider.set_state_flags(gtk::StateFlags::ACTIVE, false);
+            assert!(controls_in_use(controls.upcast_ref()));
+            slider.unset_state_flags(gtk::StateFlags::ACTIVE);
+            slider.set_state_flags(gtk::StateFlags::FOCUS_VISIBLE, false);
+            assert!(controls_in_use(controls.upcast_ref()));
+            slider.unset_state_flags(gtk::StateFlags::FOCUS_VISIBLE);
+            assert!(!controls_in_use(controls.upcast_ref()));
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; uses production handlers without opening devices"]
+    fn production_button_handlers_release_audio_owner() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let (widgets, audio) = AudioControls::new_with_opener(crate::audio_controls::test_open);
+            let start = gtk::Button::with_label("Start");
+            let fullscreen = gtk::Button::with_label("Full screen");
+            let weak_start = start.downgrade();
+            let weak_fullscreen = fullscreen.downgrade();
+            let weak_audio = Rc::downgrade(&audio);
+            connect_start_button(
+                &start,
+                &ui.active,
+                &Rc::new(Cell::new(CapturePreference::Automatic)),
+                (&ui.picture, &ui.message, &ui.inhibitor),
+                None,
+                &audio,
+            );
+            connect_fullscreen_button(&fullscreen, &ui._window);
+            drop(start);
+            drop(fullscreen);
+            drop(audio);
+            drop(widgets);
+            assert!(
+                weak_start.upgrade().is_none(),
+                "Start must not capture itself"
+            );
+            assert!(
+                weak_fullscreen.upgrade().is_none(),
+                "fullscreen must not capture itself"
+            );
+            assert!(
+                weak_audio.upgrade().is_none(),
+                "button callbacks must release the audio owner"
+            );
+        });
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display; synthetic video/audio only"]
+    fn audio_tracks_video_lifecycle_without_sharing_video_errors() {
+        gtk::test_synced(|| {
+            let ui = PipelineUi::new();
+            let video =
+                test_pipeline("videotestsrc is-live=true ! fakesink async=false sync=false");
+            ui.start(&video).unwrap();
+            video.state(gst::ClockTime::from_seconds(2)).0.unwrap();
+            let (widgets, audio) = AudioControls::new_with_opener(crate::audio_controls::test_open);
+            attach_audio(&ui.active, &audio);
+            let mute = widgets
+                .first_child()
+                .unwrap()
+                .downcast::<gtk::Button>()
+                .unwrap();
+            mute.emit_clicked();
+            let initial = audio
+                .current_pipeline()
+                .expect("already-Playing video must attach immediately");
+            request_pipeline_state(
+                ui.active.borrow().as_ref().unwrap(),
+                gst::State::Paused,
+                &ui.inhibitor,
+            )
+            .unwrap();
+            assert_eq!(initial.current_state(), gst::State::Null);
+            assert!(audio.current_pipeline().is_none());
+            request_pipeline_state(
+                ui.active.borrow().as_ref().unwrap(),
+                gst::State::Playing,
+                &ui.inhibitor,
+            )
+            .unwrap();
+            dispatch_until(|| audio.current_pipeline().is_some());
+            let resumed = audio.current_pipeline().unwrap();
+            resumed
+                .bus()
+                .unwrap()
+                .post(
+                    gst::message::Error::builder(
+                        gst::CoreError::Failed,
+                        "deliberate audio-only error",
+                    )
+                    .src(&resumed)
+                    .build(),
+                )
+                .unwrap();
+            dispatch_until(|| audio.current_pipeline().is_none());
+            assert_eq!(resumed.current_state(), gst::State::Null);
+            assert_eq!(video.current_state(), gst::State::Playing);
+            assert!(ui.active.borrow().is_some());
+            assert!(
+                !ui.message.is_visible(),
+                "audio error must not overwrite video notices"
+            );
+            assert_eq!(ui.button.label().as_deref(), Some("Stop"));
+            request_pipeline_state(
+                ui.active.borrow().as_ref().unwrap(),
+                gst::State::Paused,
+                &ui.inhibitor,
+            )
+            .unwrap();
+            request_pipeline_state(
+                ui.active.borrow().as_ref().unwrap(),
+                gst::State::Playing,
+                &ui.inhibitor,
+            )
+            .unwrap();
+            dispatch_until(|| audio.current_pipeline().is_some());
+            let final_audio = audio.current_pipeline().unwrap();
+            video
+                .bus()
+                .unwrap()
+                .post(
+                    gst::message::Error::builder(gst::CoreError::Failed, "deliberate video error")
+                        .src(&video)
+                        .build(),
+                )
+                .unwrap();
+            dispatch_until(|| ui.active.borrow().is_none());
+            assert_eq!(final_audio.current_state(), gst::State::Null);
+            assert!(audio.current_pipeline().is_none());
+            assert_eq!(video.current_state(), gst::State::Null);
+        });
+    }
 
     struct PipelineUi {
         active: ActiveCapture,

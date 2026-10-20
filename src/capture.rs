@@ -1,8 +1,20 @@
+//! Device-argument validation and the capture graph, without GTK lifecycle policy.
+//!
+//! Device paths are interpolated into GStreamer's graph parser, so both command-line
+//! parsing and the UI validate the restricted `/dev/videoN` form before use.
+
 pub fn valid_device(path: &str) -> bool {
     path.strip_prefix("/dev/video")
         .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
 }
 
+/// Describe the graph for a path already checked by [`valid_device`].
+///
+/// A bounded, downstream-leaky queue favors fresh frames over a delayed backlog;
+/// disabling sink clock synchronization avoids waiting to display captured video.
+/// Keep `videoconvert` for older-GTK compatibility: with `native-yuv`, compatible
+/// YUV caps can pass through without forcing an RGB conversion. This graph does
+/// not guarantee a capture mode, end-to-end latency, or zero-copy transport.
 pub fn pipeline_description(path: &str) -> String {
     format!("v4l2src device={path} ! queue max-size-buffers=2 leaky=downstream ! videoconvert ! gtk4paintablesink name=display sync=false")
 }

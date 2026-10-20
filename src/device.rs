@@ -1,3 +1,10 @@
+//! Linux video-node discovery, separate from pipeline allocation and UI policy.
+//!
+//! Node numbers are unstable. Automatic discovery identifies the observed module
+//! through its USB ancestry and selects its index-zero capture interface, excluding
+//! the companion metadata node. An explicit node bypasses module identification;
+//! callers still validate its path and handle access/capture errors.
+
 use std::{
     fs, io,
     path::{Path, PathBuf},
@@ -28,21 +35,29 @@ pub fn list_video_nodes(dir: &Path) -> io::Result<Vec<PathBuf>> {
 const KVM_USB_VENDOR: &str = "3188";
 const KVM_USB_PRODUCT: &str = "1000";
 
+/// Canonical nearest USB device, never a matching ancestor hub.
+pub(crate) fn usb_device(path: &Path) -> Option<PathBuf> {
+    let canonical = fs::canonicalize(path).ok()?;
+    canonical
+        .ancestors()
+        .find(|parent| parent.join("idVendor").is_file() && parent.join("idProduct").is_file())
+        .map(Path::to_path_buf)
+}
+
+pub(crate) fn is_supported_usb(path: &Path) -> bool {
+    matches!(
+        (fs::read_to_string(path.join("idVendor")), fs::read_to_string(path.join("idProduct"))),
+        (Ok(vendor), Ok(product))
+            if vendor.trim().eq_ignore_ascii_case(KVM_USB_VENDOR)
+            && product.trim().eq_ignore_ascii_case(KVM_USB_PRODUCT)
+    )
+}
+
+// This index distinction was observed on the supported module; it is not a
+// universal rule for every V4L2 device or future module revision.
 fn is_kvm_capture_node(sys_video: &Path) -> bool {
-    if !fs::read_to_string(sys_video.join("index")).is_ok_and(|index| index.trim() == "0") {
-        return false;
-    }
-    let Ok(device) = fs::canonicalize(sys_video.join("device")) else {
-        return false;
-    };
-    device.ancestors().any(|parent| {
-        matches!(
-            (fs::read_to_string(parent.join("idVendor")), fs::read_to_string(parent.join("idProduct"))),
-            (Ok(vendor), Ok(product))
-                if vendor.trim().eq_ignore_ascii_case(KVM_USB_VENDOR)
-                && product.trim().eq_ignore_ascii_case(KVM_USB_PRODUCT)
-        )
-    })
+    fs::read_to_string(sys_video.join("index")).is_ok_and(|index| index.trim() == "0")
+        && usb_device(&sys_video.join("device")).is_some_and(|usb| is_supported_usb(&usb))
 }
 
 pub fn list_kvm_nodes(dev_dir: &Path, sys_video_dir: &Path) -> io::Result<Vec<PathBuf>> {
@@ -87,6 +102,38 @@ mod tests {
     use super::*;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn ignores_supported_ancestor_hub_above_an_unsupported_camera() {
+        use std::os::unix::fs::symlink;
+        let root = std::env::temp_dir().join(format!(
+            "kvm-nearest-usb-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let camera = root.join("hub/camera/interface");
+        let video = root.join("video2");
+        fs::create_dir_all(&camera).unwrap();
+        fs::create_dir_all(&video).unwrap();
+        for (path, vendor, product) in [
+            (root.join("hub"), "3188", "1000"),
+            (root.join("hub/camera"), "058f", "5608"),
+        ] {
+            fs::write(path.join("idVendor"), vendor).unwrap();
+            fs::write(path.join("idProduct"), product).unwrap();
+        }
+        fs::write(video.join("index"), "0").unwrap();
+        symlink(&camera, video.join("device")).unwrap();
+        let found = is_kvm_capture_node(&video);
+        fs::remove_dir_all(root).unwrap();
+        assert!(
+            !found,
+            "only the nearest USB device may establish capture identity"
+        );
+    }
 
     #[test]
     fn lists_only_numeric_video_nodes_in_numeric_order() {

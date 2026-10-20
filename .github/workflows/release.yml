@@ -35,7 +35,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             pkg-config libgtk-4-dev libgstreamer1.0-dev \
             libgstreamer-plugins-base1.0-dev \
-            gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-alsa
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal --component clippy,rustfmt
       - name: Test and build

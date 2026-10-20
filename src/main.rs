@@ -1,3 +1,5 @@
+mod audio;
+mod audio_controls;
 mod capture;
 mod device;
 mod inhibit;
